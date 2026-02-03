@@ -199,48 +199,49 @@ def _load_module(path: str) -> ModuleType | None:
 def _iter_router_specs() -> Iterable[Tuple[str, str]]:
     """Yield module import paths with their associated API tags."""
 
-    return (
-        ("backend.api.auth", "Auth"),
-        ("backend.api.advanced_intelligence", "Advanced Intelligence"),
-        ("backend.api.intelligence", "Intelligence"),
-        ("backend.api.autocad", "AutoCAD"),
-        ("backend.api.chat", "Chat"),
-        ("backend.api.document_classifier", "Document Classifier"),
+    specs = [
         ("backend.api.action_item_extractor", "Action Items"),
-        ("backend.api.ifc_parser", "BIM/IFC"),
-        ("backend.api.connectors", "Connectors"),
-        ("backend.api.project", "Intel"),
-        ("backend.api.cache", "Cache"),
+        ("backend.api.advanced_intelligence", "Advanced Intelligence"),
         ("backend.api.alerts", "Alerts"),
         ("backend.api.analytics", "Analytics"),
         ("backend.api.analytics_reports_system", "Analytics Reports"),
+        ("backend.api.anomaly_detector", "Anomaly Detection"),
+        ("backend.api.auth", "Auth"),
+        ("backend.api.autocad", "AutoCAD"),
+        ("backend.api.cache", "Cache"),
+        ("backend.api.chat", "Chat"),
+        ("backend.api.connectors", "Connectors"),
+        ("backend.api.document_classifier", "Document Classifier"),
         ("backend.api.drive", "Drive"),
         ("backend.api.drive_diagnose", "Drive"),
-        ("backend.api.drive_scan", "Drive"),
         ("backend.api.drive_public", "Drive Public"),
-        ("backend.api.openai_test", "OpenAI"),
-        ("backend.api.parsing", "Parsing"),
-        ("backend.api.progress_tracking", "Progress Tracking"),
-        ("backend.api.forecast_engine", "Forecast Engine"),
-        ("backend.api.anomaly_detector", "Anomaly Detection"),
-        ("backend.api.upload", "Upload"),
-        ("backend.api.qto", "QTO"),
-        ("backend.api.vision", "Vision"),
-        ("backend.api.speech", "Speech"),
-        ("backend.api.projects", "Projects"),
-        ("backend.api.preferences", "Preferences"),
-        ("backend.api.users", "Users"),
-        ("backend.api.workspace", "Workspace"),
-        ("backend.api.translation", "Translation"),
-        ("backend.api.reasoning", "Reasoning"),
-        ("backend.api.pdp", "PDP"),
-        ("backend.api.runtime", "Runtime"),
-        ("backend.api.hydration", "Hydration"),
-        ("backend.api.ops_jobs", "Ops Jobs"),
-        ("backend.api.regression", "Regression"),
-        ("backend.api.learning", "Learning"),
+        ("backend.api.drive_scan", "Drive"),
         ("backend.api.events", "Events"),
-    )
+        ("backend.api.forecast_engine", "Forecast Engine"),
+        ("backend.api.hydration", "Hydration"),
+        ("backend.api.ifc_parser", "BIM/IFC"),
+        ("backend.api.intelligence", "Intelligence"),
+        ("backend.api.learning", "Learning"),
+        ("backend.api.openai_test", "OpenAI"),
+        ("backend.api.ops_jobs", "Ops Jobs"),
+        ("backend.api.parsing", "Parsing"),
+        ("backend.api.pdp", "PDP"),
+        ("backend.api.preferences", "Preferences"),
+        ("backend.api.progress_tracking", "Progress Tracking"),
+        ("backend.api.project", "Intel"),
+        ("backend.api.projects", "Projects"),
+        ("backend.api.qto", "QTO"),
+        ("backend.api.reasoning", "Reasoning"),
+        ("backend.api.regression", "Regression"),
+        ("backend.api.runtime", "Runtime"),
+        ("backend.api.speech", "Speech"),
+        ("backend.api.translation", "Translation"),
+        ("backend.api.upload", "Upload"),
+        ("backend.api.users", "Users"),
+        ("backend.api.vision", "Vision"),
+        ("backend.api.workspace", "Workspace"),
+    ]
+    return tuple(sorted(specs, key=lambda item: item[0]))
 
 
 def _include_router_if_available(module: ModuleType | None, tag: str) -> None:
@@ -253,7 +254,12 @@ def _include_router_if_available(module: ModuleType | None, tag: str) -> None:
         app.include_router(router, prefix="/api", tags=[tag])
 
 
+seen_modules: set[str] = set()
 for module_path, tag in _iter_router_specs():
+    if module_path in seen_modules:
+        logger.warning("Skipping duplicate router spec for %s", module_path)
+        continue
+    seen_modules.add(module_path)
     _include_router_if_available(_load_module(module_path), tag)
 
 

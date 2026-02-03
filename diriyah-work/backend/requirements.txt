@@ -1,0 +1,44 @@
+fastapi==0.128.0
+uvicorn==0.30.6
+gunicorn==22.0.0
+python-dotenv==1.0.1
+sqlalchemy==2.0.35
+psycopg2-binary==2.9.9
+numpy==1.26.4
+pandas==2.2.3
+# Use latest ifcopenshell with Python 3.11+ wheels
+ifcopenshell==0.8.4.post1
+ezdxf==1.2.0
+spacy==3.7.5
+faiss-cpu==1.8.0
+requests==2.32.4
+httpx==0.27.2
+aiofiles==24.1.0
+python-multipart==0.0.22
+openpyxl==3.1.5
+reportlab==4.2.5
+PyMuPDF==1.24.9
+redis==5.0.8
+chromadb==0.5.5
+google-api-python-client==2.149.0
+google-auth==2.35.0
+google-auth-oauthlib==1.2.1
+openai>=1.12.0
+PyPDF2==3.0.1
+python-docx==1.1.0
+python-pptx==0.6.23
+rarfile==4.1
+# Align with causalml's lower bound (>=1.6.0) while remaining compatible with mapie >=1.1.0.
+scikit-learn==1.6.1
+langdetect==1.0.9
+boto3==1.35.28
+PyJWT==2.9.0
+passlib[bcrypt]==1.7.4
+# Maintain Python 3.11 wheel support and compatibility with scikit-learn 1.6.x
+mapie==1.1.0
+dowhy==0.12
+# First release publishing Python 3.11 wheels
+causalml==0.15.5
+networkx==3.3
+statsmodels==0.14.2
+cryptography==44.0.1

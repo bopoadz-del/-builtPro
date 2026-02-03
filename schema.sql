@@ -1,73 +1,36 @@
-
-CREATE TABLE projects (
-    id SERIAL PRIMARY KEY,
-    name TEXT,
-    description TEXT,
-    drive_id TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
+CREATE TABLE IF NOT EXISTS projects (
+  id INTEGER PRIMARY KEY,
+  name TEXT,
+  drive_id TEXT UNIQUE
 );
-
-CREATE TABLE chats (
-    id SERIAL PRIMARY KEY,
-    project_id INT REFERENCES projects(id),
-    user_message TEXT,
-    ai_response TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
+CREATE TABLE IF NOT EXISTS chats (
+  id INTEGER PRIMARY KEY,
+  project_id INTEGER,
+  title TEXT,
+  pinned BOOLEAN,
+  created_at TEXT
 );
-
-CREATE TABLE alerts (
-    id SERIAL PRIMARY KEY,
-    project_id INT REFERENCES projects(id),
-    category TEXT,
-    message TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY,
+  chat_id INTEGER,
+  role TEXT,
+  content TEXT,
+  liked BOOLEAN,
+  disliked BOOLEAN,
+  copied BOOLEAN,
+  read BOOLEAN,
+  created_at TEXT
 );
-
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    email TEXT UNIQUE,
-    role TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY,
+  name TEXT,
+  email TEXT,
+  role TEXT
 );
-
-CREATE TABLE tenants (
-    id SERIAL PRIMARY KEY,
-    name TEXT,
-    drive_credentials TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
-
--- New tables for AI services
-CREATE TABLE IF NOT EXISTS summaries (
-    id SERIAL PRIMARY KEY,
-    meeting_id VARCHAR(100),
-    summary TEXT,
-    decisions TEXT,
-    issues TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS actions (
-    id SERIAL PRIMARY KEY,
-    task TEXT,
-    assignee VARCHAR(100),
-    deadline DATE,
-    status VARCHAR(50) DEFAULT 'pending',
-    source VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS anomalies (
-    id SERIAL PRIMARY KEY,
-    anomaly_type VARCHAR(100),
-    source VARCHAR(100),
-    details TEXT,
-    detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS forecasts (
-    id SERIAL PRIMARY KEY,
-    schedule_id VARCHAR(100),
-    risk_score NUMERIC,
-    estimated_completion DATE,
-    forecast_type VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER,
+  action TEXT,
+  message_id INTEGER,
+  timestamp TEXT
 );

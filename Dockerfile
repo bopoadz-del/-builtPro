@@ -3,25 +3,34 @@ FROM node:20-bullseye-slim AS frontend-build
 WORKDIR /frontend
 
 COPY frontend/package*.json ./
-RUN npm ci
+COPY frontend/vite.config.js frontend/tailwind.config.js frontend/postcss.config.js frontend/index.html ./
+COPY frontend/src ./src
+COPY frontend/public ./public
 
-COPY frontend/ ./
-RUN npm run build
+RUN npm ci && npm run build
 
 FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential gcc g++ libffi-dev libssl-dev python3-dev sqlite3 curl libboost-all-dev \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        poppler-utils \
+        tesseract-ocr \
+        libreoffice \
+        libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY backend/requirements.txt ./backend/requirements.txt
-RUN pip install --no-cache-dir -r backend/requirements.txt
+COPY backend/requirements.txt /app/backend/requirements.txt
+RUN pip install --no-cache-dir -r /app/backend/requirements.txt \
+    gunicorn==21.2.0
 
 COPY backend /app/backend
-COPY --from=frontend-build /frontend/dist /app/backend/frontend_dist
 RUN mkdir -p /app/uploads /app/images /app/storage
+COPY --from=frontend-build /frontend/dist /app/backend/frontend_dist
+COPY --from=frontend-build /frontend/public /app/frontend/public
 
 EXPOSE 8000
-CMD ["gunicorn", "backend.main:app", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
+
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "4", "-b", "0.0.0.0:8000", "backend.main:app"]

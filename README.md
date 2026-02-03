@@ -1,285 +1,59 @@
-# Diriyah Brain AI v2.0
+# Diriyah Brain AI — Backend
 
-> **AI-Powered Construction Project Management Platform**  
-> Built for the USD $63 billion Diriyah giga-project in Saudi Arabia
+FastAPI backend with Google Drive, RAG, Whisper STT, YOLO vision, and analytics.
 
-[![Tests](https://img.shields.io/badge/tests-43%20passing-brightgreen)]()
-[![Python](https://img.shields.io/badge/python-3.12-blue)]()
-[![React](https://img.shields.io/badge/react-18-61dafb)]()
-[![License](https://img.shields.io/badge/license-proprietary-red)]()
+## Run (local)
+pip install -r backend/requirements.txt
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 
-## 🎯 Overview
-
-Diriyah AI is an enterprise-grade construction management platform that combines:
-- **Document Intelligence** - AI-powered classification and action item extraction
-- **BIM Integration** - IFC model parsing and quantity take-off
-- **Project Forecasting** - Schedule and cost predictions using Earned Value Management
-- **Real-time Monitoring** - Anomaly detection and progress tracking
-
-## ✨ New Features (v2.0)
-
-### Phase 1: Document Intelligence
-| Feature | Description |
-|---------|-------------|
-| **Document Classifier** | Automatically classifies 15+ construction document types (Contracts, RFIs, Submittals, etc.) |
-| **Action Item Extractor** | Extracts tasks, assignees, due dates, and priorities from meeting minutes |
-| **Enhanced Chat** | AI chat with document citations and RAG-based retrieval |
-
-### Phase 2: BIM Integration
-| Feature | Description |
-|---------|-------------|
-| **IFC Parser** | Parse Industry Foundation Classes files using IfcOpenShell |
-| **Element Browser** | Filter and search building elements by type, level, material |
-| **QTO Calculator** | Quantity take-off with SAR cost estimation |
-
-### Phase 3: Project Intelligence
-| Feature | Description |
-|---------|-------------|
-| **Forecast Engine** | Schedule and cost predictions with Monte Carlo simulation |
-| **EVM Metrics** | SPI, CPI, EAC, TCPI calculations |
-| **Anomaly Detection** | Real-time alerts for schedule, cost, safety, quality issues |
-| **Progress Tracking** | Track progress against baseline with trend analysis |
-
-### Frontend Components
-| Component | Description |
-|-----------|-------------|
-| **DocumentUpload** | Drag-and-drop with live classification preview |
-| **BIMViewer** | Interactive IFC model browser |
-| **IntelligenceDashboard** | SPI/CPI gauges, forecasts, alerts |
-| **EnhancedChat** | Chat with citations and suggested questions |
-| **ActionItemsManager** | Task list with filtering and status tracking |
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Docker & Docker Compose
-- Node.js 18+ (for local frontend development)
-- Python 3.12+ (for local backend development)
-
-### Run with Docker
+## Optional feature packs
+Some advanced NLP, translation, and ML workflows rely on large optional dependencies. Install them only when needed:
 
 ```bash
-# Clone the repository
-git clone https://github.com/bopoadz-del/diriyah-ai-demo.git
-cd diriyah-ai-demo
-
-# Copy environment file
-cp .env.example .env
-
-# Start all services
-docker compose up --build
+pip install -r backend/requirements-ml.txt
+pip install -r backend/requirements-translation.txt
 ```
 
-Access the application:
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
+Core API routes continue to run without these extras, with graceful fallbacks where applicable.
 
-### Local Development
+## Connector configuration
 
-```bash
-# Backend
-./scripts/setup-dev-env.sh
-source .venv/bin/activate
-cd backend && uvicorn main:app --reload
+The following environment variables are consumed by the connector health
+endpoints and the new service clients:
 
-# Frontend
-cd frontend && npm install && npm run dev
+| Service | Required variables |
+| ------- | ------------------ |
+| Google Drive | `GOOGLE_SERVICE_ACCOUNT` (path to credentials) |
+| Oracle Aconex | `ACONEX_BASE_URL`, `ACONEX_API_KEY`, optional `ACONEX_HEALTH_PATH`, `ACONEX_TIMEOUT` |
+| Primavera P6 | `PRIMAVERA_BASE_URL`, `PRIMAVERA_USERNAME`, `PRIMAVERA_PASSWORD`, optional `PRIMAVERA_HEALTH_PATH`, `PRIMAVERA_TIMEOUT` |
+| BIM/IFC service | `BIM_BASE_URL`, `BIM_AUTH_TOKEN`, optional `BIM_HEALTH_PATH`, `BIM_TIMEOUT` |
+| Vision/YOLO service | `VISION_BASE_URL`, `VISION_API_KEY`, optional `VISION_HEALTH_PATH`, `VISION_TIMEOUT` |
+| OneDrive | `ONEDRIVE_HEALTH_URL`, optional `ONEDRIVE_ACCESS_TOKEN`, optional `CONNECTOR_HTTP_TIMEOUT` |
+| Power BI | `POWER_BI_HEALTH_URL`, optional `POWER_BI_API_KEY`, optional `CONNECTOR_HTTP_TIMEOUT` |
+| Microsoft Teams | `TEAMS_HEALTH_URL` and optional `TEAMS_API_TOKEN`, or `TEAMS_WEBHOOK_URL` for webhook-only setups |
 
-# Run tests
-pytest backend/tests/test_demo_features.py -v
-```
+Optional Drive-backed demo data can be supplied via the following variables:
 
-## 📡 API Reference
+* `ANALYTICS_DRIVE_FILE_ID`, `ANALYTICS_ACTIVITY_FILE_ID`, `ANALYTICS_RULES_FILE_ID`, `ANALYTICS_TEXT_FILE_ID`
+* `PRIMAVERA_DRIVE_FILE_ID`
+* `ACONEX_DRIVE_FILE_ID`
 
-### Document Classification
-```bash
-# Classify text content
-curl -X POST http://localhost:8000/api/classify \
-  -H "Content-Type: application/json" \
-  -d '{"text": "This Agreement is entered into..."}'
+When these values are omitted the backend falls back to deterministic stub data.
 
-# Classify uploaded file
-curl -X POST http://localhost:8000/api/classify/upload \
-  -F "file=@contract.pdf"
-```
+All health endpoints expect JSON responses. When the health URL returns plain
+text the raw response body is exposed under the ``details.raw`` key.
 
-### Action Item Extraction
-```bash
-# Extract from text
-curl -X POST http://localhost:8000/api/extract \
-  -H "Content-Type: application/json" \
-  -d '{"text": "Action: John to submit report by Friday"}'
-```
+## Feature availability overview
 
-### BIM/IFC Parsing
-```bash
-# Parse IFC file
-curl -X POST http://localhost:8000/api/ifc/parse \
-  -F "file=@building.ifc"
+The demo exercises a mixture of fully mocked and environment-aware services so
+Render deployments stay deterministic while still surfacing integration points.
 
-# Get model elements
-curl http://localhost:8000/api/ifc/{model_id}/elements?page_size=50
-
-# Calculate QTO
-curl -X POST http://localhost:8000/api/qto/calculate \
-  -F "file=@building.ifc"
-```
-
-### Project Forecasting
-```bash
-# Full project forecast
-curl -X POST http://localhost:8000/api/forecast/project \
-  -H "Content-Type: application/json" \
-  -d '{
-    "project_name": "Heritage Quarter",
-    "planned_end_date": "2025-12-31",
-    "current_progress": 47,
-    "planned_progress": 52,
-    "budget": 63000000,
-    "actual_cost": 28500000
-  }'
-
-# EVM metrics
-curl -X POST http://localhost:8000/api/forecast/evm \
-  -H "Content-Type: application/json" \
-  -d '{
-    "budget_at_completion": 1000000,
-    "actual_cost": 500000,
-    "percent_complete": 45,
-    "planned_percent": 50
-  }'
-```
-
-### Anomaly Detection
-```bash
-# Detect anomalies
-curl -X POST http://localhost:8000/api/anomalies/detect \
-  -H "Content-Type: application/json" \
-  -d '{
-    "data_stream": [
-      {"risk_score": 0.85, "section": "Foundation"},
-      {"progress_percent": 30, "expected_progress_percent": 50}
-    ]
-  }'
-```
-
-## 🏗️ Architecture
-
-```
-diriyah-ai-demo/
-├── backend/
-│   ├── api/                    # FastAPI route handlers
-│   │   ├── document_classifier.py
-│   │   ├── action_item_extractor.py
-│   │   ├── ifc_parser.py
-│   │   ├── qto.py
-│   │   ├── forecast_engine.py
-│   │   ├── anomaly_detector.py
-│   │   ├── progress_tracking.py
-│   │   └── chat.py
-│   ├── services/               # Business logic
-│   │   ├── document_classifier.py
-│   │   ├── action_item_extractor.py
-│   │   ├── ifc_parser.py
-│   │   ├── forecast_engine.py
-│   │   └── anomaly_detector.py
-│   └── tests/
-│       └── test_demo_features.py
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── DocumentUpload.jsx
-│   │   │   ├── BIMViewer.jsx
-│   │   │   ├── ProjectIntelligenceDashboard.jsx
-│   │   │   ├── EnhancedChat.jsx
-│   │   │   └── ActionItemsManager.jsx
-│   │   └── pages/
-│   │       ├── BIMViewerPage.jsx
-│   │       ├── IntelligencePage.jsx
-│   │       ├── DocumentsPage.jsx
-│   │       └── ActionsPage.jsx
-│   └── package.json
-├── docker-compose.yml
-└── README.md
-```
-
-## 🔧 Configuration
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OPENAI_API_KEY` | OpenAI API key for AI features | (optional) |
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://...` |
-| `REDIS_URL` | Redis connection string | `redis://localhost:6379` |
-| `JWT_SECRET_KEY` | Secret for JWT tokens | (required in production) |
-| `USE_FIXTURE_PROJECTS` | Use demo data | `true` |
-
-### Optional Dependencies
-
-```bash
-# For full BIM support
-pip install ifcopenshell
-
-# For ML features
-INSTALL_BACKEND_OPTIONALS=true ./scripts/setup-dev-env.sh
-```
-
-## 📊 Demo Data
-
-The platform includes demo data for the Diriyah Heritage Quarter project:
-- 5 sample action items with various priorities
-- Simulated progress data (47% complete)
-- Budget tracking (SAR 63M project)
-- Sample anomalies and alerts
-
-## 🧪 Testing
-
-```bash
-# Run all new feature tests
-pytest backend/tests/test_demo_features.py -v
-
-# Test specific phase
-pytest backend/tests/test_demo_features.py::TestDocumentClassifier -v
-pytest backend/tests/test_demo_features.py::TestIFCParser -v
-pytest backend/tests/test_demo_features.py::TestForecastEngine -v
-```
-
-## 📝 API Documentation
-
-Full OpenAPI documentation available at:
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-
-## 🚢 Deployment
-
-### Render.com
-
-The project includes `render.yaml` for one-click deployment:
-
-1. Connect your GitHub repository to Render
-2. Set required environment variables
-3. Deploy
-
-### Docker Production
-
-```bash
-docker compose -f docker-compose.prod.yml up -d
-```
-
-## 📄 License
-
-Proprietary - Diriyah Company © 2024
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📞 Support
-
-For questions or support, contact the Diriyah AI Platform team.
+| Capability | Backend status | Notes |
+| --- | --- | --- |
+| Document parsing | Drive-backed with resilient fallbacks. | ``/parsing/extract`` downloads files from Google Drive via ``download_file`` before running ``extract_file_content``; the helper falls back to stub text when Drive credentials are unavailable. |
+| Invoice parsing | Placeholder | ``parse_invoice`` currently returns a stub payload and should be replaced with the production extractor when available. |
+| Quantity take-off (QTO) | Demo-ready with stubbed Drive downloads when Google APIs are unavailable. | ``generate_qto`` parses DWG/IFC files after calling ``download_file``; the new Drive wrapper writes a temporary stub if the managed service cannot be reached so the pipeline can still respond. |
+| Analytics engine | Drive-aware summary with stubs | ``/analytics`` and ``/analytics/summary`` accept Drive file identifiers (or environment defaults) to hydrate activity streams, rules, and compliance text while retaining canned fallbacks. |
+| AutoCAD / CAD take-off | Drive-backed stub | ``CADTakeoffService.process_dwg`` now downloads the DWG from Drive and attempts to parse it; on stub data it returns deterministic geometry metadata so UI flows stay functional. |
+| Primavera P6 connector | Environment-aware integration with Drive stub | ``PrimaveraClient`` performs live health checks when credentials are configured and now returns Drive-backed schedule data with ``status='stubbed'`` when configuration is missing. |
+| Oracle Aconex connector | Environment-aware integration with Drive stub | ``AconexClient`` mirrors the Primavera flow, surfacing Drive-seeded transmittals when credentials are absent. |

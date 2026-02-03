@@ -1,0 +1,153 @@
+import importlib
+import importlib.util
+import logging
+import os
+import pickle
+import logging
+
+import faiss
+
+try:
+    from sentence_transformers import SentenceTransformer
+except ImportError:  # pragma: no cover - optional dependency
+    SentenceTransformer = None  # type: ignore[assignment]
+
+try:
+    from openai import OpenAI
+except ImportError:  # pragma: no cover - optional dependency
+    OpenAI = None  # type: ignore[assignment]
+
+try:
+    from openai import OpenAI
+except ImportError:  # pragma: no cover - optional dependency
+    OpenAI = None  # type: ignore[assignment]
+
+logger = logging.getLogger(__name__)
+
+_SENTENCE_TRANSFORMERS_AVAILABLE = importlib.util.find_spec("sentence_transformers") is not None
+_TRANSFORMERS_AVAILABLE = importlib.util.find_spec("transformers") is not None
+if _TRANSFORMERS_AVAILABLE:
+    try:
+        from transformers import pipeline
+    except Exception:  # pragma: no cover - optional dependency
+        _TRANSFORMERS_AVAILABLE = False
+
+INDEX_PATH = "storage/faiss.index"
+META_PATH = "storage/meta.pkl"
+os.makedirs("storage", exist_ok=True)
+
+logger = logging.getLogger(__name__)
+
+_embedder = None
+_openai_client = None
+_openai_available = True
+_fallback_generator = None
+
+if os.path.exists(INDEX_PATH) and os.path.exists(META_PATH):
+    index = faiss.read_index(INDEX_PATH)
+    with open(META_PATH, "rb") as f:
+        metadata = pickle.load(f)
+else:
+    index = faiss.IndexFlatL2(384)
+    metadata = []
+
+def _get_embedder():
+    global _embedder
+    if _embedder is not None:
+        return _embedder
+    if SentenceTransformer is None:
+        logger.warning("sentence-transformers not installed; embeddings disabled.")
+        return None
+    try:
+        sentence_transformers = importlib.import_module("sentence_transformers")
+        model = sentence_transformers.SentenceTransformer("all-MiniLM-L6-v2")
+        _embedder = model
+    except Exception as exc:
+        logger.warning("Failed to initialise sentence-transformers: %s", exc)
+        return None
+    return _embedder
+
+
+def _get_fallback_generator():
+    global _fallback_generator
+    if _fallback_generator is not None:
+        return _fallback_generator
+    if importlib.util.find_spec("transformers") is None:
+        return None
+    try:
+        transformers = importlib.import_module("transformers")
+        pipeline = getattr(transformers, "pipeline", None)
+        if pipeline is None:
+            return None
+        _fallback_generator = pipeline(
+            "text-generation",
+            model=os.getenv("HF_FALLBACK_MODEL", "gpt2"),
+        )
+    except Exception as exc:
+        logger.warning("Failed to initialise transformers pipeline: %s", exc)
+        return None
+    return _fallback_generator
+
+
+def _get_openai_client():
+    global _openai_client, _openai_available
+    if _openai_client is not None or not _openai_available:
+        return _openai_client
+    try:
+        if OpenAI is None:
+            _openai_available = False
+            return None
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            _openai_available = False
+            return None
+        _openai_client = OpenAI(api_key=api_key)
+    except Exception:  # pragma: no cover - defensive fallback
+        _openai_available = False
+        return None
+    return _openai_client
+
+
+def add_document(project_id: str, text: str, source: str):
+    embedder = _get_embedder()
+    if embedder is None:
+        logger.warning("Embeddings unavailable; install ML dependencies to enable RAG indexing.")
+        return
+    vector = embedder.encode([text])
+    index.add(vector)
+    metadata.append({"project": project_id, "text": text, "source": source})
+    faiss.write_index(index, INDEX_PATH)
+    with open(META_PATH, "wb") as f:
+        pickle.dump(metadata, f)
+
+def query_rag(project_id: str, query: str, top_k: int = 3):
+    if len(metadata) == 0:
+        return "No documents indexed yet."
+    embedder = _get_embedder()
+    if embedder is None:
+        return "Embeddings unavailable; install ML dependencies to enable RAG answers."
+    qvec = embedder.encode([query])
+    D, I = index.search(qvec, top_k)
+    hits = [metadata[i] for i in I[0] if i < len(metadata) and metadata[i]["project"] == project_id]
+    context = "\n\n".join([f"Source: {h['source']}\n{h['text']}" for h in hits])
+    prompt = f"Context:\n{context}\n\nQuestion: {query}\nAnswer concisely:"
+    openai_client = _get_openai_client()
+    if openai_client:
+        try:
+            resp = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a construction project assistant."},
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            return resp.choices[0].message.content
+        except Exception:
+            pass
+
+    fallback_generator = _get_fallback_generator()
+    if fallback_generator:
+        generated = fallback_generator(prompt, max_new_tokens=200)
+        if generated:
+            return generated[0].get("generated_text", "No response available.")
+    return "No response available."

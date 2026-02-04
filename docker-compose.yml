@@ -1,99 +1,76 @@
+version: '3.8'
 
-version: "3.9"
 services:
   backend:
-    build: .
-    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    depends_on:
-      - redis
-      - chroma
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - CORS_ORIGINS=*
-      - UNCERTAINTY_THRESHOLD=${UNCERTAINTY_THRESHOLD:-0.3}
-      - CAUSAL_CONFIDENCE_LEVEL=${CAUSAL_CONFIDENCE_LEVEL:-0.9}
-      - REDIS_URL=redis://redis:6379/0
-      - CHROMA_HOST=chroma
-      - CHROMA_PORT=8000
-    volumes:
-      - ./:/app
-  hydration-worker:
-    build: .
-    command: python -m backend.jobs.hydration_worker
+      - DATABASE_URL=${DATABASE_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      - REDIS_URL=${REDIS_URL}
     depends_on:
+      - db
       - redis
-      - chroma
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - CORS_ORIGINS=*
-      - UNCERTAINTY_THRESHOLD=${UNCERTAINTY_THRESHOLD:-0.3}
-      - CAUSAL_CONFIDENCE_LEVEL=${CAUSAL_CONFIDENCE_LEVEL:-0.9}
-      - REDIS_URL=redis://redis:6379/0
-      - CHROMA_HOST=chroma
-      - CHROMA_PORT=8000
-      - HYDRATION_ENABLED=${HYDRATION_ENABLED:-true}
-      - HYDRATION_TZ=${HYDRATION_TZ:-Asia/Riyadh}
-      - HYDRATION_HOUR=${HYDRATION_HOUR:-2}
-      - HYDRATION_MINUTE=${HYDRATION_MINUTE:-0}
-      - HYDRATION_POLL_SECONDS=${HYDRATION_POLL_SECONDS:-60}
-      - HYDRATION_MAX_FILES_PER_RUN=${HYDRATION_MAX_FILES_PER_RUN:-500}
-      - HYDRATION_OCR_ENABLED=${HYDRATION_OCR_ENABLED:-false}
-      - HYDRATION_FORCE_FULL_SCAN=${HYDRATION_FORCE_FULL_SCAN:-false}
-    volumes:
-      - ./:/app
-  queue-worker:
-    build: .
-    command: python -m backend.jobs.queue_worker
-    depends_on:
-      - redis
-      - chroma
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - CORS_ORIGINS=*
-      - UNCERTAINTY_THRESHOLD=${UNCERTAINTY_THRESHOLD:-0.3}
-      - CAUSAL_CONFIDENCE_LEVEL=${CAUSAL_CONFIDENCE_LEVEL:-0.9}
-      - REDIS_URL=redis://redis:6379/0
-      - CHROMA_HOST=chroma
-      - CHROMA_PORT=8000
-    volumes:
-      - ./:/app
-  event-projector-worker:
-    build: .
-    command: python -m backend.jobs.event_projector_worker
-    depends_on:
-      - redis
-      - chroma
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - CORS_ORIGINS=*
-      - UNCERTAINTY_THRESHOLD=${UNCERTAINTY_THRESHOLD:-0.3}
-      - CAUSAL_CONFIDENCE_LEVEL=${CAUSAL_CONFIDENCE_LEVEL:-0.9}
-      - REDIS_URL=redis://redis:6379/0
-      - CHROMA_HOST=chroma
-      - CHROMA_PORT=8000
-    volumes:
-      - ./:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
   frontend:
     build:
       context: ./frontend
+      dockerfile: Dockerfile
     ports:
-      - "5173:80"
+      - "3000:3000"
     environment:
-      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8000}
+      - REACT_APP_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
     volumes:
-      - ./frontend:/app
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
     volumes:
       - redis_data:/data
-  chroma:
-    image: ghcr.io/chroma-core/chroma:latest
-    volumes:
-      - chroma_data:/chroma/chroma
+    restart: unless-stopped
+
+  celery:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A tasks worker --loglevel=info
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
 
 volumes:
+  postgres_data:
   redis_data:
-  chroma_data:

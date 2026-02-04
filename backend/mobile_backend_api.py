@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import logging
 import os
+import secrets
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -52,6 +53,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from openai import OpenAI
+from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import (
@@ -72,10 +74,7 @@ try:  # Optional dependencies that might not be present during local debugging
 except Exception:  # pragma: no cover - only happens when boto3 is missing
     boto3 = None  # type: ignore
 
-try:
-    import jwt
-except Exception:  # pragma: no cover - only happens when PyJWT is missing
-    jwt = None  # type: ignore
+ 
 
 
 # ---------------------------------------------------------------------------
@@ -84,9 +83,10 @@ except Exception:  # pragma: no cover - only happens when PyJWT is missing
 
 logger = logging.getLogger("mobile-backend")
 
-SECRET_KEY = os.getenv("SECRET_KEY", "change-this-secret")
+SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
@@ -363,28 +363,30 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def _jwt_module() -> Any:
-    if jwt is None:
-        raise HTTPException(status_code=500, detail="JWT support not installed")
-    return jwt
-
-
-def create_access_token(data: dict) -> str:
-    module = _jwt_module()
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    return module.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({
+        "exp": expire,
+        "iat": datetime.utcnow(),
+        "type": "access",
+    })
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def decode_token(token: str) -> dict:
-    module = _jwt_module()
+def create_refresh_token(user_id: int) -> str:
+    token = secrets.token_urlsafe(32)
+    return token
+
+
+def decode_token(token: str) -> Optional[dict]:
     try:
-        return module.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except module.ExpiredSignatureError as exc:  # type: ignore[attr-defined]
-        raise HTTPException(status_code=401, detail="Token has expired") from exc
-    except module.PyJWTError as exc:  # type: ignore[attr-defined]
-        raise HTTPException(status_code=401, detail="Invalid token") from exc
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        return None
 
 
 async def get_current_user(
@@ -393,6 +395,8 @@ async def get_current_user(
 ):
     token = credentials.credentials
     payload = decode_token(token)
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
     user_id = payload.get("sub")
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token")

@@ -1,3 +1,0 @@
-# Aggregated requirements for CI and local development.
-# Canonical dependency set for runtime installs (dev/test deps live in requirements-dev.txt).
--r backend/requirements.txt

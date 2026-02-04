@@ -1,6 +1,6 @@
-# Contributing to Diriyah Brain AI
+# Contributing to BuilTPro Brain AI
 
-Thank you for your interest in contributing to Diriyah Brain AI! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to BuilTPro Brain AI! This document provides guidelines and instructions for contributing.
 
 ## Table of Contents
 
@@ -15,8 +15,8 @@ Thank you for your interest in contributing to Diriyah Brain AI! This document p
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/bopoadz-del/diriyah-ai-demo.git
-   cd diriyah-ai-demo
+   git clone https://github.com/bopoadz-del/BuilTPro-ai-demo.git
+   cd BuilTPro-ai-demo
    ```
 
 2. **Set up environment variables:**
@@ -119,6 +119,6 @@ By contributing to this project, you agree that your contributions will be licen
 
 If you have questions or need help, please:
 - Open an issue on GitHub
-- Contact the maintainers at [maintainers@diriyah.ai](mailto:maintainers@diriyah.ai)
+- Contact the maintainers at [maintainers@builtpro.ai](mailto:maintainers@builtpro.ai)
 
 Thank you for contributing!

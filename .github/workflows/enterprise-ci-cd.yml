@@ -106,8 +106,8 @@ jobs:
         id: repo
         run: |
           repo=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          repo_clean=$(echo "$repo" | sed 's/^[-_]//; s/[-_]$//')
-          echo "repository=$repo_clean" >> $GITHUB_OUTPUT
+          repo=$(echo "$repo" | sed 's/^[^a-z0-9]*//; s/\/[^a-z0-9]*/\//')
+          echo "repository=$repo" >> $GITHUB_OUTPUT
       - uses: docker/metadata-action@v5
         id: meta
         with:

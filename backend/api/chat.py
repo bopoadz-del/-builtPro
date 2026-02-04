@@ -321,7 +321,7 @@ async def chat(request: Request, message: Optional[str] = _message_dependency) -
         ] if include_citations else [],
         "confidence": confidence,
         "context_docs_count": len(context_docs),
-        "context_docs": context_docs,
+        **({"context_docs": context_docs} if include_citations else {}),
     }
 
 

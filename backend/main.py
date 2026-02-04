@@ -355,6 +355,8 @@ async def serve_frontend() -> FileResponse:
 
 
 def _decode_token(token: str) -> dict:
+    if not JWT_SECRET:
+        raise HTTPException(status_code=503, detail="JWT authentication is not configured")
     try:
         return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     except PyJWTError as exc:

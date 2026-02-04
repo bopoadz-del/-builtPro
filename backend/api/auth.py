@@ -60,6 +60,10 @@ ADMIN_USER, ADMIN_PASSWORD = _get_admin_credentials()
 
 @router.post("/auth/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> dict:
+    if not JWT_SECRET:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="JWT authentication is not configured")
+    if not ADMIN_USER or not ADMIN_PASSWORD:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Admin credentials are not configured")
     if form_data.username != ADMIN_USER or form_data.password != ADMIN_PASSWORD:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     token = jwt.encode({"sub": form_data.username, "tenant_id": 1}, JWT_SECRET, algorithm=JWT_ALGORITHM)

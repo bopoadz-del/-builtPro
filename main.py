@@ -161,10 +161,6 @@ def _seed_demo_admin_user() -> None:
         db.close()
 
 
-from backend.backend.db import Base, engine
-Base.metadata.drop_all(bind=engine)
-Base.metadata.create_all(bind=engine)
-
 _init_db_if_configured()
 
 

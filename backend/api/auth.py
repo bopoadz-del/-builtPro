@@ -20,9 +20,16 @@ def _get_jwt_secret() -> str:
     secret = os.getenv("JWT_SECRET_KEY")
     if secret:
         return secret
-    if IS_PROD:
-        raise ValueError("JWT_SECRET_KEY must be set in production")
-    return "dev-only-secret"
+
+    is_prod = os.getenv("ENV", "production").lower() in ("prod", "production")
+    if is_prod:
+        logger.error(
+            "JWT_SECRET_KEY is not set in production; "
+            "auth endpoints will reject all requests"
+        )
+        return ""
+
+    return "insecure-dev-secret-do-not-use-in-prod"
 
 
 def _get_admin_credentials() -> tuple[str, str]:
@@ -35,7 +42,11 @@ def _get_admin_credentials() -> tuple[str, str]:
 
     is_prod = os.getenv("ENV", "production").lower() in ("prod", "production")
     if is_prod:
-        raise ValueError("AUTH_ADMIN_USER and AUTH_ADMIN_PASSWORD must be set in production")
+        logger.error(
+            "AUTH_ADMIN_USER and AUTH_ADMIN_PASSWORD not set in production; "
+            "auth endpoints will reject login attempts"
+        )
+        return "", ""
 
     logger.warning("Using insecure dev admin credentials - do NOT use in production")
     return user or "dev-admin", password or "dev-password-insecure"

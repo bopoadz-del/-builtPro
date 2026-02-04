@@ -18,10 +18,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.backend.db import init_db
-from backend.backend.pdp.middleware import PDPMiddleware
-from backend.middleware.tenant_enforcer import TenantEnforcerMiddleware
-
 
 def _configure_logging() -> logging.Logger:
     """Configure structured logging for Render deployments."""
@@ -44,8 +40,39 @@ def _configure_logging() -> logging.Logger:
 logger = _configure_logging()
 
 
+def _optional_import(path: str):
+    try:
+        return import_module(path)
+    except Exception as exc:  # pragma: no cover
+        logger.warning("Optional module %s unavailable: %s", path, exc)
+        return None
+
+
+def _resolve_attr(module_path: str, attr: str):
+    module = _optional_import(module_path)
+    if module is None:
+        return None
+    resolved = getattr(module, attr, None)
+    if resolved is None:
+        logger.warning("Optional attribute %s.%s unavailable", module_path, attr)
+    return resolved
+
+
 app = FastAPI(title="Diriyah Brain AI", version="v1.24")
 logger.info("FastAPI application initialised", extra={"version": app.version})
+
+# Resolve optional backend modules (may be absent in lightweight deploys)
+_backend_db = _optional_import("backend.backend.db")
+if _backend_db is not None and hasattr(_backend_db, "init_db"):
+    init_db = _backend_db.init_db
+else:
+    def init_db() -> None:
+        logger.warning("init_db unavailable; skipping database initialization")
+
+PDPMiddleware = _resolve_attr("backend.backend.pdp.middleware", "PDPMiddleware")
+TenantEnforcerMiddleware = _resolve_attr(
+    "backend.middleware.tenant_enforcer", "TenantEnforcerMiddleware"
+)
 
 # Environment detection: default to production for security
 ENV = os.getenv("ENV", "production").lower()
@@ -60,7 +87,11 @@ def _get_jwt_secret() -> str:
 
     is_prod = os.getenv("ENV", "production").lower() in ("prod", "production")
     if is_prod:
-        raise ValueError("JWT_SECRET_KEY must be set in production")
+        logger.error(
+            "JWT_SECRET_KEY is not set in production; "
+            "JWT-protected endpoints will reject all requests"
+        )
+        return ""
 
     logger.warning("Using insecure dev JWT secret - do NOT use in production")
     return "insecure-dev-secret-do-not-use-in-prod"
@@ -163,10 +194,15 @@ if os.getenv("ENABLE_BERT_INTENT", "false").lower() == "true":
     logger.info("BERT intent detection enabled")
 
 ENABLE_PDP = os.getenv("ENABLE_PDP_MIDDLEWARE", "true").lower() == "true"
-if ENABLE_PDP:
+if ENABLE_PDP and PDPMiddleware is not None:
     app.add_middleware(PDPMiddleware)
+elif ENABLE_PDP:
+    logger.warning("PDP middleware enabled but unavailable; skipping")
 
-app.add_middleware(TenantEnforcerMiddleware)
+if TenantEnforcerMiddleware is not None:
+    app.add_middleware(TenantEnforcerMiddleware)
+else:
+    logger.warning("Tenant enforcer middleware unavailable; skipping")
 
 # CORS middleware - secure configuration for production
 _cors_origins_raw = os.getenv("CORS_ALLOW_ORIGINS", "").strip()

@@ -3,7 +3,7 @@ version: "3.9"
 services:
   backend:
     build: .
-    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
     ports:
       - "8000:8000"
     depends_on:
@@ -12,6 +12,8 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - CORS_ORIGINS=*
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-only-jwt-secret}
+      - ENV=${ENV:-development}
       - UNCERTAINTY_THRESHOLD=${UNCERTAINTY_THRESHOLD:-0.3}
       - CAUSAL_CONFIDENCE_LEVEL=${CAUSAL_CONFIDENCE_LEVEL:-0.9}
       - REDIS_URL=redis://redis:6379/0

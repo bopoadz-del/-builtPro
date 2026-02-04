@@ -20,8 +20,10 @@ COPY backend/requirements.txt ./backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
 COPY backend /app/backend
+COPY main.py conftest.py /app/
+COPY scripts /app/scripts
 COPY --from=frontend-build /frontend/dist /app/backend/frontend_dist
 RUN mkdir -p /app/uploads /app/images /app/storage
 
 EXPOSE 8000
-CMD ["gunicorn", "backend.main:app", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
+CMD ["gunicorn", "main:app", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]

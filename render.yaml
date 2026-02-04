@@ -10,8 +10,8 @@ services:
     buildCommand: ./render-build.sh
     startCommand: >-
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
-        source /opt/render/project/.venv/bin/activate
-      fi
+        source /opt/render/project/.venv/bin/activate;
+      fi;
       PORT_VALUE=\"${PORT:-8000}\" && \
       GUNICORN_LOG_LEVEL=\"${GUNICORN_LOG_LEVEL:-${LOG_LEVEL:-info}}\" && \
       echo \"PORT=${PORT} resolved_port=${PORT_VALUE}\" && \

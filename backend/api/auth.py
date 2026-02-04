@@ -20,9 +20,16 @@ def _get_jwt_secret() -> str:
     secret = os.getenv("JWT_SECRET_KEY")
     if secret:
         return secret
-    if IS_PROD:
-        raise ValueError("JWT_SECRET_KEY must be set in production")
-    return "dev-only-secret"
+
+    is_prod = os.getenv("ENV", "production").lower() in ("prod", "production")
+    if is_prod:
+        logger.error(
+            "JWT_SECRET_KEY is not set in production; "
+            "auth endpoints will reject all requests"
+        )
+        return ""
+
+    return "insecure-dev-secret-do-not-use-in-prod"
 
 
 def _get_admin_credentials() -> tuple[str, str]:
@@ -33,11 +40,16 @@ def _get_admin_credentials() -> tuple[str, str]:
     if user and password:
         return user, password
 
-    if IS_PROD:
-        raise ValueError("AUTH_ADMIN_USER and AUTH_ADMIN_PASSWORD must be set in production")
+    is_prod = os.getenv("ENV", "production").lower() in ("prod", "production")
+    if is_prod:
+        logger.error(
+            "AUTH_ADMIN_USER and AUTH_ADMIN_PASSWORD not set in production; "
+            "auth endpoints will reject login attempts"
+        )
+        return "", ""
 
     logger.warning("Using insecure dev admin credentials - do NOT use in production")
-    return user or "admin", password or "dev-secret"
+    return user or "dev-admin", password or "dev-password-insecure"
 
 
 JWT_SECRET = _get_jwt_secret()
@@ -48,6 +60,10 @@ ADMIN_USER, ADMIN_PASSWORD = _get_admin_credentials()
 
 @router.post("/auth/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> dict:
+    if not JWT_SECRET:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="JWT authentication is not configured")
+    if not ADMIN_USER or not ADMIN_PASSWORD:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Admin credentials are not configured")
     if form_data.username != ADMIN_USER or form_data.password != ADMIN_PASSWORD:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     token = jwt.encode({"sub": form_data.username, "tenant_id": 1}, JWT_SECRET, algorithm=JWT_ALGORITHM)

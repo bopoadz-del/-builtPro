@@ -11,7 +11,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from backend.backend.db import get_db
-from backend.reasoning.ule_engine import ULEEngine
+
+try:
+    from backend.reasoning.ule_engine import ULEEngine
+except Exception:  # pragma: no cover - numpy may be absent
+    ULEEngine = None  # type: ignore[assignment,misc]
+
 from backend.reasoning.schemas import (
     DocumentInput,
     Entity,
@@ -24,8 +29,12 @@ from backend.reasoning.schemas import (
     LinkType,
     PackConfig,
 )
-from backend.reasoning.packs.construction_pack import ConstructionPack
-from backend.reasoning.packs.commercial_pack import CommercialPack
+try:
+    from backend.reasoning.packs.construction_pack import ConstructionPack
+    from backend.reasoning.packs.commercial_pack import CommercialPack
+except Exception:  # pragma: no cover - numpy may be absent
+    ConstructionPack = None  # type: ignore[assignment,misc]
+    CommercialPack = None  # type: ignore[assignment,misc]
 
 logger = logging.getLogger(__name__)
 
@@ -35,17 +44,21 @@ router = APIRouter()
 _engine: Optional[ULEEngine] = None
 
 
-def get_engine() -> ULEEngine:
+def get_engine():
     """Get or create the ULE engine singleton."""
     global _engine
+    if ULEEngine is None:
+        raise HTTPException(status_code=503, detail="Reasoning engine unavailable (missing numpy)")
     if _engine is None:
         _engine = ULEEngine(
             default_confidence_threshold=0.75,
             embedding_model="all-MiniLM-L6-v2",
             use_openai_embeddings=False,
         )
-        _engine.register_pack(ConstructionPack())
-        _engine.register_pack(CommercialPack())
+        if ConstructionPack is not None:
+            _engine.register_pack(ConstructionPack())
+        if CommercialPack is not None:
+            _engine.register_pack(CommercialPack())
         logger.info("ULE Engine initialized with default packs")
     return _engine
 

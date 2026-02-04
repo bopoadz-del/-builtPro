@@ -12,7 +12,7 @@ try:  # pragma: no cover - optional dependency for lightweight deployments
 except ImportError:  # pragma: no cover - handled gracefully
     np = None  # type: ignore[assignment]
 
-from fastapi import APIRouter, BackgroundTasks, Body, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Body, File, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 

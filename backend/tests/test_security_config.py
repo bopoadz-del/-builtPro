@@ -10,19 +10,15 @@ import pytest
 class TestJWTSecretEnforcement:
     """Tests for JWT secret enforcement in production."""
 
-    def test_jwt_secret_required_in_production(self, monkeypatch):
-        """Missing JWT_SECRET_KEY in production should raise ValueError."""
-        # Clear any existing values
+    def test_jwt_secret_empty_in_production(self, monkeypatch):
+        """Missing JWT_SECRET_KEY in production should return empty string (non-fatal)."""
         monkeypatch.delenv("JWT_SECRET_KEY", raising=False)
         monkeypatch.delenv("ENV", raising=False)
 
-        # Import the function fresh
-        from importlib import reload
-        import backend.main as main_module
+        from backend.main import _get_jwt_secret
 
-        # The module should raise on import when JWT_SECRET_KEY is missing in prod
-        with pytest.raises(ValueError, match="JWT_SECRET_KEY must be set"):
-            reload(main_module)
+        secret = _get_jwt_secret()
+        assert secret == "", "Missing JWT_SECRET_KEY in production should return empty string"
 
     def test_jwt_secret_allowed_in_dev(self, monkeypatch):
         """JWT_SECRET_KEY can be omitted in development environments."""
@@ -47,16 +43,17 @@ class TestJWTSecretEnforcement:
 class TestAdminCredentialsEnforcement:
     """Tests for admin credentials enforcement in production."""
 
-    def test_admin_creds_required_in_production(self, monkeypatch):
-        """Missing admin credentials in production should raise ValueError."""
+    def test_admin_creds_empty_in_production(self, monkeypatch):
+        """Missing admin credentials in production should return empty strings (non-fatal)."""
         monkeypatch.delenv("AUTH_ADMIN_USER", raising=False)
         monkeypatch.delenv("AUTH_ADMIN_PASSWORD", raising=False)
         monkeypatch.delenv("ENV", raising=False)
 
         from backend.api.auth import _get_admin_credentials
 
-        with pytest.raises(ValueError, match="AUTH_ADMIN_USER and AUTH_ADMIN_PASSWORD must be set"):
-            _get_admin_credentials()
+        user, password = _get_admin_credentials()
+        assert user == ""
+        assert password == ""
 
     def test_admin_creds_allowed_in_dev(self, monkeypatch):
         """Admin credentials can be omitted in development environments."""

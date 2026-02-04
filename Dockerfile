@@ -1,5 +1,5 @@
-# Build stage
-FROM python:3.11-slim as builder
+# Build stage for Python dependencies
+FROM python:3.11-slim as python-builder
 
 WORKDIR /app
 
@@ -11,6 +11,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
+# Build stage for Frontend
+FROM node:20-alpine as frontend-builder
+
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend/ ./
+RUN npm run build
+
 # Runtime stage
 FROM python:3.11-slim
 
@@ -18,7 +27,8 @@ RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 
 WORKDIR /app
 
-COPY --from=builder /root/.local /home/appuser/.local
+COPY --from=python-builder /root/.local /home/appuser/.local
+COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 COPY --chown=appuser:appgroup . .
 
 ENV PATH=/home/appuser/.local/bin:$PATH

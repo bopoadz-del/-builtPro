@@ -342,6 +342,7 @@ def _configure_frontend_assets() -> tuple[Path | None, Path | None]:
     if assets_dir.exists():
         app.mount("/assets", StaticFiles(directory=assets_dir, check_dir=False), name="assets")
     index_file = frontend_dir / "index.html"
+    app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="static")
     return frontend_dir, index_file
 
 

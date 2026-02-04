@@ -105,7 +105,7 @@ jobs:
       - name: Lowercase and sanitize repository name
         id: repo
         run: |
-          repo=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')
+          repo=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           repo=$(echo "$repo" | sed 's/^[^a-z0-9]*//; s/\/[^a-z0-9]*/\//')
           echo "repository=$repo" >> $GITHUB_OUTPUT
       - uses: docker/metadata-action@v5

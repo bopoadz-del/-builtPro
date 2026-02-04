@@ -126,6 +126,10 @@ def _seed_demo_admin_user() -> None:
         logger.warning("Failed to seed demo admin user: %s", exc)
 
 
+from backend.backend.db import Base, engine
+Base.metadata.drop_all(bind=engine)
+Base.metadata.create_all(bind=engine)
+
 _init_db_if_configured()
 
 

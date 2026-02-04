@@ -27,10 +27,12 @@ RUN pip install --no-cache-dir -r /app/backend/requirements.txt \
     gunicorn==21.2.0
 
 COPY backend /app/backend
+COPY main.py conftest.py /app/
+COPY scripts /app/scripts
 RUN mkdir -p /app/uploads /app/images /app/storage
 COPY --from=frontend-build /frontend/dist /app/backend/frontend_dist
 COPY --from=frontend-build /frontend/public /app/frontend/public
 
 EXPOSE 8000
 
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "4", "-b", "0.0.0.0:8000", "backend.main:app"]
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "4", "-b", "0.0.0.0:8000", "main:app"]

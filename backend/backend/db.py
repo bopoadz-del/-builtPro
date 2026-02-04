@@ -136,6 +136,17 @@ def _apply_postgres_schema_hotfixes(connection) -> None:
     except Exception as exc:
         logger.debug("init_db: sourcetype hotfix skipped: %s", exc)
 
+    # Add hashed_password column to users table if missing (Render/Postgres hotfix)
+    # Fixes: psycopg2.errors.UndefinedColumn: column users.hashed_password does not exist
+    try:
+        connection.execute(
+            text("ALTER TABLE users ADD COLUMN IF NOT EXISTS hashed_password VARCHAR(255) NULL")
+        )
+        logger.info("init_db: Applied hotfix - users.hashed_password column added")
+    except Exception as exc:
+        if "does not exist" not in str(exc).lower() and "already exists" not in str(exc).lower():
+            logger.debug("init_db: users.hashed_password hotfix skipped: %s", exc)
+
 
 def init_db() -> None:
     """Ensure all tables exist for the current metadata."""

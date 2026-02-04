@@ -1,7 +1,7 @@
 """Add users and refresh_tokens tables
 
 Revision ID: 002_add_users_and_refresh_tokens
-Revises: 001_initial
+Revises: None
 Create Date: 2026-02-04 00:00:00
 
 This Alembic migration introduces two new tables to support user
@@ -24,7 +24,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '002_add_users_and_refresh_tokens'
-down_revision = '001_initial'
+down_revision = None  # Fixed: This is now the initial migration (001_initial was missing)
 branch_labels = None
 depends_on = None
 

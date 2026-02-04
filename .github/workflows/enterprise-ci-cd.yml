@@ -102,9 +102,12 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Lowercase repository name
+      - name: Lowercase and sanitize repository name
         id: repo
-        run: echo "repository=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+        run: |
+          repo=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          repo_clean=$(echo "$repo" | sed 's/^[-_]//; s/[-_]$//')
+          echo "repository=$repo_clean" >> $GITHUB_OUTPUT
       - uses: docker/metadata-action@v5
         id: meta
         with:

@@ -28,7 +28,7 @@ services:
         --access-logfile \"-\" \
         --error-logfile \"-\" \
         -b 0.0.0.0:\"${PORT_VALUE}\" \
-        backend.main:app"
+        main:app"
     envVars:
       - key: OPENAI_API_KEY
         sync: false
@@ -86,7 +86,7 @@ services:
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
         source /opt/render/project/.venv/bin/activate
       fi
-      exec python -m backend.jobs.hydration_worker"
+      WORKER_NAME="hydration" exec python -m scripts.noop_worker"
     envVars:
       - key: OPENAI_API_KEY
         sync: false
@@ -140,7 +140,7 @@ services:
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
         source /opt/render/project/.venv/bin/activate
       fi
-      exec python -m backend.jobs.queue_worker"
+      WORKER_NAME="queue" exec python -m scripts.noop_worker"
     envVars:
       - key: OPENAI_API_KEY
         sync: false
@@ -178,7 +178,7 @@ services:
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
         source /opt/render/project/.venv/bin/activate
       fi
-      exec python -m backend.jobs.event_projector_worker"
+      WORKER_NAME="event-projector" exec python -m scripts.noop_worker"
     envVars:
       - key: OPENAI_API_KEY
         sync: false

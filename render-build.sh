@@ -32,26 +32,28 @@ fi
 source "$VENV_PATH/bin/activate"
 pip install --upgrade pip
 pip install --no-cache-dir \
-  -r backend/requirements.txt
+  -r requirements.txt
 
 if [[ "${INSTALL_DEV_REQUIREMENTS:-false}" == "true" ]]; then
-  pip install --no-cache-dir -r backend/requirements-dev.txt
+  pip install --no-cache-dir -r requirements-dev.txt
 fi
 
 if [[ "${INSTALL_BACKEND_OPTIONALS:-false}" == "true" ]]; then
-  pip install --no-cache-dir -r backend/requirements-ml.txt
-  pip install --no-cache-dir -r backend/requirements-translation.txt
+  pip install --no-cache-dir -r requirements-ml.txt
+  pip install --no-cache-dir -r requirements-translation.txt
 fi
 
 # Build the frontend bundle that FastAPI serves in production
-pushd frontend
-npm ci
-npm run build
-popd
+if [[ -d "frontend" ]]; then
+  pushd frontend
+  npm ci
+  npm run build
+  popd
+fi
 
 # Ensure the backend serves a stable frontend path on Render.
 FRONTEND_DIST_PATH="frontend/dist"
-BACKEND_DIST_PATH="backend/frontend_dist"
+BACKEND_DIST_PATH="frontend_dist"
 if [[ -d "$FRONTEND_DIST_PATH" ]]; then
   rm -rf "$BACKEND_DIST_PATH"
   mkdir -p "$BACKEND_DIST_PATH"

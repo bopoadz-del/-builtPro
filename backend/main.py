@@ -1,393 +1,105 @@
-"""FastAPI application entry-point with Render-friendly router loading."""
-
-from __future__ import annotations
-
-from importlib import import_module
-import logging
-import os
-import sys
 from pathlib import Path
-from types import ModuleType
-from typing import Iterable, Tuple
-
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.security import OAuth2PasswordBearer
-import jwt
-from jwt import PyJWTError
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from backend.middleware.rate_limiter import limiter
+from backend.core.database import get_db
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+import os
 
+# Import API routers
+from backend.api.auth_routes import router as auth_router
+from backend.api.self_coding_routes import router as self_coding_router
+from backend.api.v1.chat import router as chat_v1_router
+from backend.api.v1.auditor import router as auditor_v1_router
+from backend.api.v1.formulas import router as formulas_v1_router
+from backend.api.v1.schedule_analysis import router as schedule_v1_router
+from backend.api.v1.audio_analysis import router as audio_v1_router
+from backend.api.v1.archive_analysis import router as archive_v1_router
+from backend.api.v1.cad_analysis import router as cad_v1_router
+from backend.api.v1.pdf_analysis import router as pdf_v1_router
 
-def _configure_logging() -> logging.Logger:
-    """Configure structured logging for Render deployments."""
+app = FastAPI(title="Blank App - Unified UI+API")
 
-    log_level_name = os.getenv("LOG_LEVEL", "INFO").upper()
-    log_level = getattr(logging, log_level_name, logging.INFO)
+# Rate limiting middleware
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
+app.add_exception_handler(RateLimitExceeded, lambda request, exc: JSONResponse(status_code=429, content={"detail": "Too Many Requests"}))
 
-    logging.basicConfig(
-        level=log_level,
-        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-        handlers=[logging.StreamHandler(sys.stdout)],
-        force=True,
-    )
+# Global error handlers
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    # log exception here if desired
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
-    logger = logging.getLogger(__name__)
-    logger.debug("Logging configured", extra={"level": log_level_name})
-    return logger
-
-
-logger = _configure_logging()
-
-
-def _optional_import(path: str):
-    try:
-        return import_module(path)
-    except Exception as exc:  # pragma: no cover
-        logger.warning("Optional module %s unavailable: %s", path, exc)
-        return None
-
-
-def _resolve_attr(module_path: str, attr: str):
-    module = _optional_import(module_path)
-    if module is None:
-        return None
-    resolved = getattr(module, attr, None)
-    if resolved is None:
-        logger.warning("Optional attribute %s.%s unavailable", module_path, attr)
-    return resolved
-
-
-app = FastAPI(title="Diriyah Brain AI", version="v1.24")
-logger.info("FastAPI application initialised", extra={"version": app.version})
-
-# Resolve optional backend modules (may be absent in lightweight deploys)
-_backend_db = _optional_import("backend.backend.db")
-if _backend_db is not None and hasattr(_backend_db, "init_db"):
-    init_db = _backend_db.init_db
-else:
-    def init_db() -> None:
-        logger.warning("init_db unavailable; skipping database initialization")
-
-PDPMiddleware = _resolve_attr("backend.backend.pdp.middleware", "PDPMiddleware")
-TenantEnforcerMiddleware = _resolve_attr(
-    "backend.middleware.tenant_enforcer", "TenantEnforcerMiddleware"
-)
-
-# Environment detection: default to production for security
-ENV = os.getenv("ENV", "production").lower()
-IS_PROD = ENV in ("prod", "production")
-
-
-def _get_jwt_secret() -> str:
-    """Get JWT secret, requiring it in production environments."""
-    secret = os.getenv("JWT_SECRET_KEY")
-    if secret:
-        return secret
-
-    is_prod = os.getenv("ENV", "production").lower() in ("prod", "production")
-    if is_prod:
-        logger.error(
-            "JWT_SECRET_KEY is not set in production; "
-            "JWT-protected endpoints will reject all requests"
-        )
-        return ""
-
-    logger.warning("Using insecure dev JWT secret - do NOT use in production")
-    return "insecure-dev-secret-do-not-use-in-prod"
-
-
-JWT_SECRET = _get_jwt_secret()
-JWT_ALGORITHM = "HS256"
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
-
-
-_TRUE_VALUES = {"1", "true", "yes", "y", "on"}
-_FALSE_VALUES = {"0", "false", "no", "n", "off"}
-
-
-def env_flag(name: str, default: bool) -> tuple[bool, str | None]:
-    """Parse a boolean-ish environment variable with a safe default."""
-
-    raw = os.getenv(name)
-    if raw is None:
-        return default, None
-    normalized = raw.strip().lower()
-    if normalized in _TRUE_VALUES:
-        return True, raw
-    if normalized in _FALSE_VALUES:
-        return False, raw
-    return default, raw
-
-
-def _init_db_if_configured() -> None:
-    """Initialise the database if startup init is enabled.
-
-    Defaults to True for production/Render deployments to ensure tables exist.
-    Set INIT_DB_ON_STARTUP=false to disable (e.g., for tests with fixtures).
-    """
-    enabled, raw = env_flag("INIT_DB_ON_STARTUP", True)
-    logger.info("INIT_DB_ON_STARTUP raw=%r parsed=%s", raw, enabled)
-    if enabled:
-        logger.info("Initialising database on startup")
-        init_db()
-        _seed_demo_admin_user()
-    else:
-        logger.info("Skipping DB init on startup")
-
-
-def _seed_demo_admin_user() -> None:
-    """Seed a demo admin user when no user with id=1 exists."""
-
-    try:
-        from backend.backend.db import SessionLocal
-        from backend.backend.models import User
-
-        db = SessionLocal()
-        try:
-            existing = db.query(User).filter(User.id == 1).first()
-            if existing:
-                return
-            demo_user = User(id=1, name="Demo Admin", email="demo-admin@local", role="admin")
-            db.add(demo_user)
-            db.commit()
-            logger.info("Seeded demo admin user", extra={"user_id": demo_user.id})
-        finally:
-            db.close()
-    except Exception as exc:
-        logger.warning("Failed to seed demo admin user: %s", exc)
-
-
-_init_db_if_configured()
-
-
-def _seed_demo_sources_if_configured() -> None:
-    """Seed demo hydration sources if DEMO_SEED_SOURCES is enabled."""
-    enabled, raw = env_flag("DEMO_SEED_SOURCES", False)
-    logger.info("DEMO_SEED_SOURCES raw=%r parsed=%s", raw, enabled)
-    if not enabled:
-        return
-
-    try:
-        from backend.backend.db import SessionLocal
-        from backend.api.hydration import seed_demo_source
-
-        db = SessionLocal()
-        try:
-            source = seed_demo_source(db)
-            if source:
-                logger.info(
-                    "Demo source seeded: id=%s name=%s workspace=%s",
-                    source.id,
-                    source.name,
-                    source.workspace_id,
-                )
-        finally:
-            db.close()
-    except Exception as exc:
-        logger.warning("Failed to seed demo sources: %s", exc)
-
-
-_seed_demo_sources_if_configured()
-
-if os.getenv("ENABLE_BERT_INTENT", "false").lower() == "true":
-    logger.info("BERT intent detection enabled")
-
-ENABLE_PDP = os.getenv("ENABLE_PDP_MIDDLEWARE", "true").lower() == "true"
-if ENABLE_PDP and PDPMiddleware is not None:
-    app.add_middleware(PDPMiddleware)
-elif ENABLE_PDP:
-    logger.warning("PDP middleware enabled but unavailable; skipping")
-
-if TenantEnforcerMiddleware is not None:
-    app.add_middleware(TenantEnforcerMiddleware)
-else:
-    logger.warning("Tenant enforcer middleware unavailable; skipping")
-
-# CORS middleware - secure configuration for production
-_cors_origins_raw = os.getenv("CORS_ALLOW_ORIGINS", "").strip()
-_cors_origins = [o.strip() for o in _cors_origins_raw.split(",") if o.strip()] if _cors_origins_raw else ["*"]
-# In production with wildcard origins, disable credentials for security
-_cors_allow_credentials = not (IS_PROD and _cors_origins == ["*"])
-if IS_PROD and _cors_origins == ["*"]:
-    logger.warning("CORS: wildcard origins in production - credentials disabled for security")
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+# CORS - Allow all origins for public access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_cors_origins,
-    allow_credentials=_cors_allow_credentials,
-    allow_methods=["*"],
+    allow_origins=["*"],  # Allow all origins for public access
+    allow_credentials=False,  # Changed to False for security with public access
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
     allow_headers=["*"],
 )
 
-_BASE_DIR = Path(__file__).resolve().parent
-_PROJECT_ROOT = _BASE_DIR.parent
+# Include API routers
+app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(self_coding_router, prefix="/api/self-coding", tags=["Self-Coding"])
+app.include_router(formulas_v1_router, prefix="/api/v1", tags=["Formulas"])
+app.include_router(chat_v1_router, prefix="/api/v1", tags=["Chat"])
+app.include_router(auditor_v1_router, prefix="/api/v1/auditor", tags=["Auditor"])
+app.include_router(schedule_v1_router, prefix="/api/v1", tags=["Schedule"])
+app.include_router(audio_v1_router, prefix="/api/v1", tags=["Audio"])
+app.include_router(archive_v1_router, prefix="/api/v1", tags=["Archive"])
+app.include_router(cad_v1_router, prefix="/api/v1", tags=["CAD"])
+app.include_router(pdf_v1_router, prefix="/api/v1", tags=["PDF"])
 
+# Paths: this file sits at backend/app, so climb to backend/
+BASE_DIR = Path(__file__).resolve().parent.parent
+FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
+FRONTEND_DIST = Path(os.getenv("FRONTEND_DIST_PATH", str(FRONTEND_DIST)))
 
-def _load_module(path: str) -> ModuleType | None:
-    """Import ``path`` safely, logging but tolerating missing dependencies."""
-
-    try:
-        return import_module(path)
-    except Exception as exc:  # pragma: no cover - defensive guard for optional deps
-        logger.warning("Skipping router %s due to import error: %s", path, exc)
-        return None
-
-
-def _iter_router_specs() -> Iterable[Tuple[str, str]]:
-    """Yield module import paths with their associated API tags."""
-
-    return (
-        ("backend.api.auth", "Auth"),
-        ("backend.api.advanced_intelligence", "Advanced Intelligence"),
-        ("backend.api.intelligence", "Intelligence"),
-        ("backend.api.autocad", "AutoCAD"),
-        ("backend.api.chat", "Chat"),
-        ("backend.api.document_classifier", "Document Classifier"),
-        ("backend.api.action_item_extractor", "Action Items"),
-        ("backend.api.ifc_parser", "BIM/IFC"),
-        ("backend.api.connectors", "Connectors"),
-        ("backend.api.project", "Intel"),
-        ("backend.api.cache", "Cache"),
-        ("backend.api.alerts", "Alerts"),
-        ("backend.api.analytics", "Analytics"),
-        ("backend.api.analytics_reports_system", "Analytics Reports"),
-        ("backend.api.drive", "Drive"),
-        ("backend.api.drive_diagnose", "Drive"),
-        ("backend.api.drive_scan", "Drive"),
-        ("backend.api.drive_public", "Drive Public"),
-        ("backend.api.openai_test", "OpenAI"),
-        ("backend.api.parsing", "Parsing"),
-        ("backend.api.progress_tracking", "Progress Tracking"),
-        ("backend.api.forecast_engine", "Forecast Engine"),
-        ("backend.api.anomaly_detector", "Anomaly Detection"),
-        ("backend.api.upload", "Upload"),
-        ("backend.api.qto", "QTO"),
-        ("backend.api.vision", "Vision"),
-        ("backend.api.speech", "Speech"),
-        ("backend.api.projects", "Projects"),
-        ("backend.api.preferences", "Preferences"),
-        ("backend.api.users", "Users"),
-        ("backend.api.workspace", "Workspace"),
-        ("backend.api.translation", "Translation"),
-        ("backend.api.reasoning", "Reasoning"),
-        ("backend.api.pdp", "PDP"),
-        ("backend.api.runtime", "Runtime"),
-        ("backend.api.hydration", "Hydration"),
-        ("backend.api.ops_jobs", "Ops Jobs"),
-        ("backend.api.regression", "Regression"),
-        ("backend.api.learning", "Learning"),
-        ("backend.api.events", "Events"),
-    )
-
-
-def _include_router_if_available(module: ModuleType | None, tag: str) -> None:
-    """Register the router exposed by ``module`` when present."""
-
-    if module is None:
-        return
-    router = getattr(module, "router", None)
-    if router is not None:
-        app.include_router(router, prefix="/api", tags=[tag])
-
-
-for module_path, tag in _iter_router_specs():
-    _include_router_if_available(_load_module(module_path), tag)
-
-
-def _iter_frontend_candidates() -> Iterable[Path]:
-    env_override = os.getenv("FRONTEND_DIST_DIR")
-    if env_override:
-        yield Path(env_override)
-    yield Path("/app/frontend/dist")
-    yield Path("/app/frontend/build")
-    yield _PROJECT_ROOT / "frontend" / "dist"
-    yield _PROJECT_ROOT / "frontend" / "build"
-    yield _BASE_DIR / "frontend_dist"
-
-
-def _resolve_frontend_dir() -> Path | None:
-    for candidate in _iter_frontend_candidates():
-        index_file = candidate / "index.html"
-        if index_file.exists():
-            return candidate
-    return None
-
-
-def _configure_frontend_assets() -> tuple[Path | None, Path | None]:
-    frontend_dir = _resolve_frontend_dir()
-    if frontend_dir is None:
-        candidates = [str(path) for path in _iter_frontend_candidates()]
-        logger.warning(
-            "Frontend build directory not found; SPA assets are unavailable. Tried: %s",
-            candidates,
-        )
-        return None, None
-    logger.info("Frontend assets resolved", extra={"frontend_dir": str(frontend_dir)})
-    assets_dir = frontend_dir / "assets"
-    if assets_dir.exists():
-        app.mount("/assets", StaticFiles(directory=assets_dir, check_dir=False), name="assets")
-    index_file = frontend_dir / "index.html"
-    return frontend_dir, index_file
-
-
-_FRONTEND_DIR, _INDEX_HTML = _configure_frontend_assets()
-
-
-def _is_reserved_path(path: str) -> bool:
-    if path == "":
-        return False
-    if path == "api" or path.startswith("api/"):
-        return True
-    if path in {"health", "healthz", "openapi.json"}:
-        return True
-    if path == "docs" or path.startswith("docs/"):
-        return True
-    if path == "redoc" or path.startswith("redoc/"):
-        return True
-    return False
-
-
-@app.get("/", include_in_schema=False)
-async def serve_frontend() -> FileResponse:
-    if _INDEX_HTML is None:
-        raise HTTPException(status_code=404, detail="Frontend assets are not available")
-    return FileResponse(_INDEX_HTML, media_type="text/html")
-
-
-def _decode_token(token: str) -> dict:
-    if not JWT_SECRET:
-        raise HTTPException(status_code=503, detail="JWT authentication is not configured")
-    try:
-        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-    except PyJWTError as exc:
-        raise HTTPException(status_code=401, detail="Invalid token") from exc
-
-
-@app.get("/protected")
-def protected_endpoint(token: str = Depends(oauth2_scheme)) -> dict:
-    payload = _decode_token(token)
-    return {"status": "ok", "subject": payload.get("sub"), "tenant_id": payload.get("tenant_id")}
-
-
+# Ensure health is always available and defined before any SPA mounting
 @app.get("/health")
-def health_check():
-    return {
-        "status": "ok",
-    }
+async def health():
+    return {"status": "ok"}
 
+# Liveness and readiness probes
+@app.get("/livez", include_in_schema=False)
+async def livez():
+    return {"status": "live"}
 
-@app.get("/healthz")
-def health_check_alias():
-    return health_check()
+@app.get("/readyz", include_in_schema=False)
+async def readyz(db=Depends(get_db)):
+    return {"status": "ready"}
+if FRONTEND_DIST.exists() and (FRONTEND_DIST / "index.html").exists():
+    # Mount only the static assets directory so it won't shadow API routes
+    assets_dir = FRONTEND_DIST / "assets"
+    if assets_dir.exists() and assets_dir.is_dir():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
 
+    # Serve index.html for the root
+    @app.get("/", include_in_schema=False)
+    async def _index():
+        return FileResponse(FRONTEND_DIST / "index.html")
 
-@app.get("/{full_path:path}", include_in_schema=False)
-async def serve_frontend_spa(full_path: str) -> FileResponse:
-    if _INDEX_HTML is None or _FRONTEND_DIR is None:
-        raise HTTPException(status_code=404, detail="Frontend assets are not available")
-    if _is_reserved_path(full_path):
-        raise HTTPException(status_code=404, detail="Not found")
-    candidate = _FRONTEND_DIR / full_path
-    if full_path and candidate.exists() and candidate.is_file():
-        return FileResponse(candidate)
-    return FileResponse(_INDEX_HTML, media_type="text/html")
+    # Catch-all for SPA routes but avoid catching API or asset/health paths
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa_catch_all(full_path: str):
+        # Prevent catching API or asset paths
+        if full_path.startswith("api") or full_path.startswith("assets") or full_path == "health":
+            raise HTTPException(status_code=404)
+        return FileResponse(FRONTEND_DIST / "index.html")
+else:
+    @app.get("/")
+    async def root():
+        return JSONResponse(
+            {"status": "backend", "message": "Frontend not found. Build the frontend and include frontend/dist in the deployment."},
+            status_code=200,
+        )

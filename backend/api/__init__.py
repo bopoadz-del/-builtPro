@@ -1,1 +1,4 @@
-"""API routers for the backend."""
+"""API package initializer.
+
+Declares the `api` namespace for FastAPI routers and subpackages.
+"""

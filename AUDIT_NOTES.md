@@ -1,4 +1,4 @@
-# Diriyah Brain AI Repo Audit
+# BuilTPro Brain AI Repo Audit
 
 ## Backend
 - main.py: Logging middleware, error handler, secure CORS ✔
@@ -6,7 +6,7 @@
 - Connectors (Aconex, P6, BIM): Stubs, need real integration ⚠
 
 ## Frontend
-- Navbar/Sidebar: Tailwind styling, Diriyah branding ✔
+- Navbar/Sidebar: Tailwind styling, BuilTPro branding ✔
 - Dashboard: Analytics, Alerts, Documents placeholders ✔
 - ChatWindow: Split-screen for photos/graphs/docs ✔
 

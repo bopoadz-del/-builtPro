@@ -1,6 +1,22 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, func
+from datetime import datetime
+import enum
+
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, func, Enum
 from sqlalchemy.orm import relationship
 from .db import Base
+
+
+class UserRole(str, enum.Enum):
+    OPERATOR = "operator"
+    ENGINEER = "engineer"
+    ADMIN = "admin"
+    AUDITOR = "auditor"
+    SYSTEM = "system"
+    USER = "user"
+    DIRECTOR = "director"
+    COMMERCIAL = "commercial"
+    SAFETY_OFFICER = "safety_officer"
+    VIEWER = "viewer"
 
 class Project(Base):
     __tablename__ = "projects"
@@ -37,8 +53,31 @@ class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    email = Column(String, unique=True, nullable=False)
-    role = Column(String, default="user")
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    hashed_password = Column(String(255), nullable=True)
+    role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
+    is_active = Column(Integer, default=1)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_login = Column(DateTime)
+
+    refresh_tokens = relationship(
+        "RefreshToken",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token = Column(String(255), unique=True, index=True, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    revoked = Column(Integer, default=0)
+
+    user = relationship("User", back_populates="refresh_tokens")
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"

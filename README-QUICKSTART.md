@@ -1,5 +1,5 @@
 
-# Diriyah Brain AI — Quickstart
+# BuilTPro Brain AI — Quickstart
 
 ## Prereqs
 - Docker + Docker Compose

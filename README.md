@@ -1,7 +1,7 @@
-# Diriyah Brain AI v2.0
+# BuilTPro Brain AI v2.0
 
 > **AI-Powered Construction Project Management Platform**  
-> Built for the USD $63 billion Diriyah giga-project in Saudi Arabia
+> Built for the USD $63 billion BuilTPro giga-project in Saudi Arabia
 
 [![Tests](https://img.shields.io/badge/tests-43%20passing-brightgreen)]()
 [![Python](https://img.shields.io/badge/python-3.12-blue)]()
@@ -10,7 +10,7 @@
 
 ## 🎯 Overview
 
-Diriyah AI is an enterprise-grade construction management platform that combines:
+BuilTPro AI is an enterprise-grade construction management platform that combines:
 - **Document Intelligence** - AI-powered classification and action item extraction
 - **BIM Integration** - IFC model parsing and quantity take-off
 - **Project Forecasting** - Schedule and cost predictions using Earned Value Management
@@ -60,8 +60,8 @@ Diriyah AI is an enterprise-grade construction management platform that combines
 
 ```bash
 # Clone the repository
-git clone https://github.com/bopoadz-del/diriyah-ai-demo.git
-cd diriyah-ai-demo
+git clone https://github.com/bopoadz-del/BuilTPro-ai-demo.git
+cd BuilTPro-ai-demo
 
 # Copy environment file
 cp .env.example .env
@@ -167,7 +167,7 @@ curl -X POST http://localhost:8000/api/anomalies/detect \
 ## 🏗️ Architecture
 
 ```
-diriyah-ai-demo/
+BuilTPro-ai-demo/
 ├── backend/
 │   ├── api/                    # FastAPI route handlers
 │   │   ├── document_classifier.py
@@ -228,7 +228,7 @@ INSTALL_BACKEND_OPTIONALS=true ./scripts/setup-dev-env.sh
 
 ## 📊 Demo Data
 
-The platform includes demo data for the Diriyah Heritage Quarter project:
+The platform includes demo data for the BuilTPro Heritage Quarter project:
 - 5 sample action items with various priorities
 - Simulated progress data (47% complete)
 - Budget tracking (SAR 63M project)
@@ -270,7 +270,7 @@ docker compose -f docker-compose.prod.yml up -d
 
 ## 📄 License
 
-Proprietary - Diriyah Company © 2024
+Proprietary - BuilTPro Company © 2024
 
 ## 🤝 Contributing
 
@@ -282,4 +282,4 @@ Proprietary - Diriyah Company © 2024
 
 ## 📞 Support
 
-For questions or support, contact the Diriyah AI Platform team.
+For questions or support, contact the BuilTPro AI Platform team.

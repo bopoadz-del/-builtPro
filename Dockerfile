@@ -1,29 +1,35 @@
-FROM node:20-bullseye-slim AS frontend-build
-
-WORKDIR /frontend
-
-COPY frontend/package*.json ./
-RUN npm ci
-
-COPY frontend/ ./
-RUN npm run build
-
-FROM python:3.11-slim
+# Build stage
+FROM python:3.9-slim as builder
 
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential gcc g++ libffi-dev libssl-dev python3-dev sqlite3 curl libboost-all-dev \
+    gcc \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-COPY backend/requirements.txt ./backend/requirements.txt
-RUN pip install --no-cache-dir -r backend/requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
 
-COPY backend /app/backend
-COPY main.py conftest.py /app/
-COPY scripts /app/scripts
-COPY --from=frontend-build /frontend/dist /app/backend/frontend_dist
-RUN mkdir -p /app/uploads /app/images /app/storage
+# Runtime stage
+FROM python:3.9-slim
+
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+
+WORKDIR /app
+
+COPY --from=builder /root/.local /home/appuser/.local
+COPY --chown=appuser:appgroup . .
+
+ENV PATH=/home/appuser/.local/bin:$PATH
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
 
 EXPOSE 8000
-CMD ["gunicorn", "main:app", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

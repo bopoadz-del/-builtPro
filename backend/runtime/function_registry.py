@@ -5,7 +5,10 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-import numpy as np
+try:
+    import numpy as np
+except ImportError:  # pragma: no cover - optional heavy dependency
+    np = None  # type: ignore[assignment]
 
 
 def monte_carlo_sim(
@@ -23,6 +26,9 @@ def monte_carlo_sim(
     Returns:
         Dictionary with simulation results.
     """
+    if np is None:
+        return {"error": "numpy is required for Monte Carlo simulation"}
+
     # Limit iterations for safety
     iterations = min(iterations, 10000)
 

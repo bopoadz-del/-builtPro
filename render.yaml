@@ -10,8 +10,8 @@ services:
     buildCommand: ./render-build.sh
     startCommand: >-
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
-        source /opt/render/project/.venv/bin/activate
-      fi
+        source /opt/render/project/.venv/bin/activate;
+      fi;
       PORT_VALUE=\"${PORT:-8000}\" && \
       GUNICORN_LOG_LEVEL=\"${GUNICORN_LOG_LEVEL:-${LOG_LEVEL:-info}}\" && \
       echo \"PORT=${PORT} resolved_port=${PORT_VALUE}\" && \
@@ -73,6 +73,10 @@ services:
         value: "demo"
       - key: VITE_USER_ID
         value: "demo"
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: ENV
+        value: "production"
     healthCheckPath: /health
   - type: worker
     name: mba-hydration-worker
@@ -84,9 +88,9 @@ services:
     buildCommand: ./render-build.sh
     startCommand: >-
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
-        source /opt/render/project/.venv/bin/activate
-      fi
-      WORKER_NAME="hydration" exec python -m scripts.noop_worker"
+        source /opt/render/project/.venv/bin/activate;
+      fi;
+      WORKER_NAME=hydration exec python -m scripts.noop_worker"
     envVars:
       - key: OPENAI_API_KEY
         sync: false
@@ -138,9 +142,9 @@ services:
     buildCommand: ./render-build.sh
     startCommand: >-
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
-        source /opt/render/project/.venv/bin/activate
-      fi
-      WORKER_NAME="queue" exec python -m scripts.noop_worker"
+        source /opt/render/project/.venv/bin/activate;
+      fi;
+      WORKER_NAME=queue exec python -m scripts.noop_worker"
     envVars:
       - key: OPENAI_API_KEY
         sync: false
@@ -176,9 +180,9 @@ services:
     buildCommand: ./render-build.sh
     startCommand: >-
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
-        source /opt/render/project/.venv/bin/activate
-      fi
-      WORKER_NAME="event-projector" exec python -m scripts.noop_worker"
+        source /opt/render/project/.venv/bin/activate;
+      fi;
+      WORKER_NAME=event-projector exec python -m scripts.noop_worker"
     envVars:
       - key: OPENAI_API_KEY
         sync: false

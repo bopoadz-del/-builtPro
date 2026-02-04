@@ -33,11 +33,12 @@ def _get_admin_credentials() -> tuple[str, str]:
     if user and password:
         return user, password
 
-    if IS_PROD:
+    is_prod = os.getenv("ENV", "production").lower() in ("prod", "production")
+    if is_prod:
         raise ValueError("AUTH_ADMIN_USER and AUTH_ADMIN_PASSWORD must be set in production")
 
     logger.warning("Using insecure dev admin credentials - do NOT use in production")
-    return user or "admin", password or "dev-secret"
+    return user or "dev-admin", password or "dev-password-insecure"
 
 
 JWT_SECRET = _get_jwt_secret()

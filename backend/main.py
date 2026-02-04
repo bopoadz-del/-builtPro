@@ -58,11 +58,12 @@ def _get_jwt_secret() -> str:
     if secret:
         return secret
 
-    if IS_PROD:
+    is_prod = os.getenv("ENV", "production").lower() in ("prod", "production")
+    if is_prod:
         raise ValueError("JWT_SECRET_KEY must be set in production")
 
     logger.warning("Using insecure dev JWT secret - do NOT use in production")
-    return "dev-only-secret"
+    return "insecure-dev-secret-do-not-use-in-prod"
 
 
 JWT_SECRET = _get_jwt_secret()

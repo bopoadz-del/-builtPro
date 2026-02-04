@@ -6,8 +6,13 @@ from functools import lru_cache
 from typing import Any, Dict, List, Optional
 import logging
 
-import numpy as np
-import pandas as pd
+try:
+    import numpy as np
+    import pandas as pd
+except ImportError:  # pragma: no cover - optional heavy deps
+    np = None  # type: ignore[assignment]
+    pd = None  # type: ignore[assignment]
+
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 
 logger = logging.getLogger(__name__)

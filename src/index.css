@@ -1,0 +1,13 @@
+/*
+  The Tailwind directives inject its base, component and utility styles
+  into the compiled CSS.  See https://tailwindcss.com/docs/installation
+  for details.  Additional global styles can be added below.
+*/
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom global styles */
+body {
+  @apply min-h-screen antialiased;
+}

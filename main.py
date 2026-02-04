@@ -399,7 +399,7 @@ def health_check_alias():
 async def serve_frontend_spa(full_path: str) -> FileResponse:
     if _INDEX_HTML is None or _FRONTEND_DIR is None:
         raise HTTPException(status_code=404, detail="Frontend assets are not available")
-    if _is_reserved_path(full_path):
+    if _is_reserved_path(full_path) and full_path != "dashboard":
         raise HTTPException(status_code=404, detail="Not found")
     candidate = _FRONTEND_DIR / full_path
     if full_path and candidate.exists() and candidate.is_file():

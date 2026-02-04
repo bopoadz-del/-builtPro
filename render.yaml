@@ -19,33 +19,202 @@ services:
       echo \"MPLCONFIGDIR=${MPLCONFIGDIR}\" && \
       echo \"GUNICORN_LOG_LEVEL=${GUNICORN_LOG_LEVEL}\" && \
       echo \"Launching gunicorn with: -w 1 -t 180 --graceful-timeout 180 --log-level ${GUNICORN_LOG_LEVEL}\" && \
-      services:
-        - type: web
-          name: blank-app-backend
-          runtime: docker
-          dockerfilePath: ./backend/Dockerfile
-          envVars:
-            - key: DATABASE_URL
-              fromDatabase:
-                name: blank-app-db
-                property: connectionString
-            - key: SECRET_KEY
-              generateValue: true
-          healthCheckPath: /health
-          autoDeploy: true
-
-        - type: web
-          name: blank-app-frontend
-          runtime: docker
-          dockerfilePath: ./frontend/Dockerfile
-          envVars:
-            - key: REACT_APP_API_URL
-              value: https://blank-app-backend.onrender.com
-          autoDeploy: true
-
-      databases:
-        - name: blank-app-db
-          databaseName: blankapp
-          user: blankapp
-          plan: standard
+      exec gunicorn \
+        -k uvicorn.workers.UvicornWorker \
+        -w 1 \
+        -t 180 \
+        --graceful-timeout 180 \
+        --log-level \"${GUNICORN_LOG_LEVEL}\" \
+        --access-logfile \"-\" \
+        --error-logfile \"-\" \
+        -b 0.0.0.0:\"${PORT_VALUE}\" \
+        main:app"
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromService:
+          name: mba-postgres-main
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: mba-redis
+          property: connectionString
+      # Render: Required Environment Variables (Web + Worker)
+      # - DATABASE_URL must be the Render Postgres Internal URL and identical across web/worker services.
+      # - REDIS_URL should point at the Render Key Value Internal URL.
+      # - JOB_STREAM_NAME (optional) must match across services when set.
+      - key: CHROMA_HOST
+        sync: false
+      - key: CHROMA_PORT
+        sync: false
       - key: INSTALL_DEV_REQUIREMENTS
+        value: "false"
+      # INIT_DB_ON_STARTUP: Create DB tables on startup (required for first deploy)
+      # Default is true in code; set false only for environments with external migrations
+      - key: INIT_DB_ON_STARTUP
+        value: "true"
+      # DEMO_SEED_SOURCES: Seed demo hydration source for workspace "demo" on startup
+      - key: DEMO_SEED_SOURCES
+        value: "true"
+      - key: MPLCONFIGDIR
+        value: "/tmp/matplotlib"
+      - key: NODE_VERSION
+        value: "20"
+      - key: LOG_LEVEL
+        value: "DEBUG"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: PYTHONFAULTHANDLER
+        value: "1"
+      - key: PROMETHEUS_ENABLED
+        value: "true"
+      - key: VITE_WORKSPACE_ID
+        value: "demo"
+      - key: VITE_USER_ID
+        value: "demo"
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: ENV
+        value: "production"
+    healthCheckPath: /health
+  - type: worker
+    name: mba-hydration-worker
+    env: python
+    plan: starter
+    region: oregon
+    branch: main
+    pythonVersion: 3.11.9
+    buildCommand: ./render-build.sh
+    startCommand: >-
+      bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
+        source /opt/render/project/.venv/bin/activate;
+      fi;
+      WORKER_NAME=hydration exec python -m scripts.noop_worker"
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromService:
+          name: mba-postgres-main
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: mba-redis
+          property: connectionString
+      # Render: Required Environment Variables (Web + Worker)
+      # - DATABASE_URL must be the Render Postgres Internal URL and identical across web/worker services.
+      # - REDIS_URL should point at the Render Key Value Internal URL.
+      # - JOB_STREAM_NAME (optional) must match across services when set.
+      - key: CHROMA_HOST
+        sync: false
+      - key: CHROMA_PORT
+        sync: false
+      - key: HYDRATION_ENABLED
+        value: "true"
+      - key: HYDRATION_TZ
+        value: "Asia/Riyadh"
+      - key: HYDRATION_HOUR
+        value: "2"
+      - key: HYDRATION_MINUTE
+        value: "0"
+      - key: HYDRATION_POLL_SECONDS
+        value: "60"
+      - key: HYDRATION_MAX_FILES_PER_RUN
+        value: "500"
+      - key: HYDRATION_OCR_ENABLED
+        value: "false"
+      - key: HYDRATION_FORCE_FULL_SCAN
+        value: "false"
+      - key: LOG_LEVEL
+        value: "DEBUG"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: PYTHONFAULTHANDLER
+        value: "1"
+  - type: worker
+    name: mba-queue-worker
+    env: python
+    plan: starter
+    region: oregon
+    branch: main
+    pythonVersion: 3.11.9
+    buildCommand: ./render-build.sh
+    startCommand: >-
+      bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
+        source /opt/render/project/.venv/bin/activate;
+      fi;
+      WORKER_NAME=queue exec python -m scripts.noop_worker"
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromService:
+          name: mba-postgres-main
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: mba-redis
+          property: connectionString
+      # Render: Required Environment Variables (Web + Worker)
+      # - DATABASE_URL must be the Render Postgres Internal URL and identical across web/worker services.
+      # - REDIS_URL should point at the Render Key Value Internal URL.
+      # - JOB_STREAM_NAME (optional) must match across services when set.
+      - key: CHROMA_HOST
+        sync: false
+      - key: CHROMA_PORT
+        sync: false
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: LOG_LEVEL
+        value: "DEBUG"
+      - key: PYTHONFAULTHANDLER
+        value: "1"
+  - type: worker
+    name: mba-event-projector
+    env: python
+    plan: starter
+    region: oregon
+    branch: main
+    pythonVersion: 3.11.9
+    buildCommand: ./render-build.sh
+    startCommand: >-
+      bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
+        source /opt/render/project/.venv/bin/activate;
+      fi;
+      WORKER_NAME=event-projector exec python -m scripts.noop_worker"
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromService:
+          name: mba-postgres-main
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: mba-redis
+          property: connectionString
+      # Render: Required Environment Variables (Web + Worker)
+      # - DATABASE_URL must be the Render Postgres Internal URL and identical across web/worker services.
+      # - REDIS_URL should point at the Render Key Value Internal URL.
+      # - JOB_STREAM_NAME (optional) must match across services when set.
+      - key: CHROMA_HOST
+        sync: false
+      - key: CHROMA_PORT
+        sync: false
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: LOG_LEVEL
+        value: "DEBUG"
+      - key: PYTHONFAULTHANDLER
+        value: "1"
+  - type: redis
+    name: mba-redis
+    plan: starter
+    region: oregon
+
+databases:
+  - name: mba-postgres-main
+    databaseName: diriyah_ai_main
+    plan: starter
+    region: oregon

@@ -86,7 +86,11 @@ services:
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
         source /opt/render/project/.venv/bin/activate
       fi
-      WORKER_NAME="hydration" exec python -m scripts.noop_worker"
+      if [ \"${RENDER_NOOP_WORKERS}\" = \"true\" ]; then
+        WORKER_NAME=\"hydration\" exec python -m scripts.noop_worker
+      else
+        exec python -m backend.hydration.worker
+      fi"
     envVars:
       - key: OPENAI_API_KEY
         sync: false
@@ -140,7 +144,11 @@ services:
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
         source /opt/render/project/.venv/bin/activate
       fi
-      WORKER_NAME="queue" exec python -m scripts.noop_worker"
+      if [ \"${RENDER_NOOP_WORKERS}\" = \"true\" ]; then
+        WORKER_NAME=\"queue\" exec python -m scripts.noop_worker
+      else
+        exec python -m backend.queue.worker
+      fi"
     envVars:
       - key: OPENAI_API_KEY
         sync: false
@@ -178,7 +186,11 @@ services:
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
         source /opt/render/project/.venv/bin/activate
       fi
-      WORKER_NAME="event-projector" exec python -m scripts.noop_worker"
+      if [ \"${RENDER_NOOP_WORKERS}\" = \"true\" ]; then
+        WORKER_NAME=\"event-projector\" exec python -m scripts.noop_worker
+      else
+        exec python -m backend.events.worker
+      fi"
     envVars:
       - key: OPENAI_API_KEY
         sync: false

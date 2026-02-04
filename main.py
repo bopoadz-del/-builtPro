@@ -18,10 +18,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.backend.db import init_db
-from backend.backend.pdp.middleware import PDPMiddleware
-from backend.middleware.tenant_enforcer import TenantEnforcerMiddleware
-
 
 def _configure_logging() -> logging.Logger:
     """Configure structured logging for Render deployments."""
@@ -46,6 +42,39 @@ logger = _configure_logging()
 
 app = FastAPI(title="Diriyah Brain AI", version="v1.24")
 logger.info("FastAPI application initialised", extra={"version": app.version})
+
+
+def _optional_import(path: str) -> ModuleType | None:
+    try:
+        return import_module(path)
+    except Exception as exc:  # pragma: no cover - defensive guard for optional deps
+        logger.warning("Optional module %s unavailable: %s", path, exc)
+        return None
+
+
+def _resolve_attr(module_path: str, attr: str) -> object | None:
+    module = _optional_import(module_path)
+    if module is None:
+        return None
+    resolved = getattr(module, attr, None)
+    if resolved is None:
+        logger.warning("Optional attribute %s.%s unavailable", module_path, attr)
+    return resolved
+
+
+_backend_db = _optional_import("backend.backend.db")
+if _backend_db is not None and hasattr(_backend_db, "init_db"):
+    init_db = _backend_db.init_db
+else:
+
+    def init_db() -> None:
+        logger.warning("init_db unavailable; skipping database initialization")
+
+
+PDPMiddleware = _resolve_attr("backend.backend.pdp.middleware", "PDPMiddleware")
+TenantEnforcerMiddleware = _resolve_attr(
+    "backend.middleware.tenant_enforcer", "TenantEnforcerMiddleware"
+)
 
 # Environment detection: default to production for security
 ENV = os.getenv("ENV", "production").lower()
@@ -107,23 +136,29 @@ def _init_db_if_configured() -> None:
 def _seed_demo_admin_user() -> None:
     """Seed a demo admin user when no user with id=1 exists."""
 
-    try:
-        from backend.backend.db import SessionLocal
-        from backend.backend.models import User
+    db_module = _optional_import("backend.backend.db")
+    models_module = _optional_import("backend.backend.models")
+    if db_module is None or models_module is None:
+        logger.warning("Skipping demo admin seed; backend modules unavailable")
+        return
 
-        db = SessionLocal()
-        try:
-            existing = db.query(User).filter(User.id == 1).first()
-            if existing:
-                return
-            demo_user = User(id=1, name="Demo Admin", email="demo-admin@local", role="admin")
-            db.add(demo_user)
-            db.commit()
-            logger.info("Seeded demo admin user", extra={"user_id": demo_user.id})
-        finally:
-            db.close()
-    except Exception as exc:
-        logger.warning("Failed to seed demo admin user: %s", exc)
+    SessionLocal = getattr(db_module, "SessionLocal", None)
+    User = getattr(models_module, "User", None)
+    if SessionLocal is None or User is None:
+        logger.warning("Skipping demo admin seed; required symbols missing")
+        return
+
+    db = SessionLocal()
+    try:
+        existing = db.query(User).filter(User.id == 1).first()
+        if existing:
+            return
+        demo_user = User(id=1, name="Demo Admin", email="demo-admin@local", role="admin")
+        db.add(demo_user)
+        db.commit()
+        logger.info("Seeded demo admin user", extra={"user_id": demo_user.id})
+    finally:
+        db.close()
 
 
 _init_db_if_configured()
@@ -136,24 +171,30 @@ def _seed_demo_sources_if_configured() -> None:
     if not enabled:
         return
 
-    try:
-        from backend.backend.db import SessionLocal
-        from backend.api.hydration import seed_demo_source
+    db_module = _optional_import("backend.backend.db")
+    hydration_module = _optional_import("backend.api.hydration")
+    if db_module is None or hydration_module is None:
+        logger.warning("Skipping demo source seed; backend modules unavailable")
+        return
 
-        db = SessionLocal()
-        try:
-            source = seed_demo_source(db)
-            if source:
-                logger.info(
-                    "Demo source seeded: id=%s name=%s workspace=%s",
-                    source.id,
-                    source.name,
-                    source.workspace_id,
-                )
-        finally:
-            db.close()
-    except Exception as exc:
-        logger.warning("Failed to seed demo sources: %s", exc)
+    SessionLocal = getattr(db_module, "SessionLocal", None)
+    seed_demo_source = getattr(hydration_module, "seed_demo_source", None)
+    if SessionLocal is None or seed_demo_source is None:
+        logger.warning("Skipping demo source seed; required symbols missing")
+        return
+
+    db = SessionLocal()
+    try:
+        source = seed_demo_source(db)
+        if source:
+            logger.info(
+                "Demo source seeded: id=%s name=%s workspace=%s",
+                source.id,
+                source.name,
+                source.workspace_id,
+            )
+    finally:
+        db.close()
 
 
 _seed_demo_sources_if_configured()
@@ -162,10 +203,15 @@ if os.getenv("ENABLE_BERT_INTENT", "false").lower() == "true":
     logger.info("BERT intent detection enabled")
 
 ENABLE_PDP = os.getenv("ENABLE_PDP_MIDDLEWARE", "true").lower() == "true"
-if ENABLE_PDP:
+if ENABLE_PDP and PDPMiddleware is not None:
     app.add_middleware(PDPMiddleware)
+elif ENABLE_PDP:
+    logger.warning("PDP middleware enabled but unavailable; skipping")
 
-app.add_middleware(TenantEnforcerMiddleware)
+if TenantEnforcerMiddleware is not None:
+    app.add_middleware(TenantEnforcerMiddleware)
+else:
+    logger.warning("Tenant enforcer middleware unavailable; skipping")
 
 # CORS middleware - secure configuration for production
 _cors_origins_raw = os.getenv("CORS_ALLOW_ORIGINS", "").strip()

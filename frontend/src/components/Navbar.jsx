@@ -1,39 +1,47 @@
-import React from "react";
-import { NavLink } from "react-router-dom";
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 
-const navItems = [
-  { label: "Dashboard", to: "/dashboard" },
-  { label: "Chat", to: "/chat" },
-  { label: "Analytics", to: "/analytics" },
-  { label: "Settings", to: "/settings" },
-];
-
+/**
+ * Simple navigation bar that appears on all pages.  It highlights the
+ * current route and provides links to the login, registration and
+ * dashboard pages.  If a user has logged in, their token will be stored
+ * in localStorage under the `access_token` key; you can extend this
+ * component to display the current user or a logout button.
+ */
 export default function Navbar() {
+  const location = useLocation();
+  const activeClass = (path) =>
+    location.pathname === path
+      ? 'text-blue-600 border-blue-600'
+      : 'text-gray-700 border-transparent hover:text-blue-600 hover:border-blue-600';
+
   return (
-    <header className="border-b border-gray-200 bg-white">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#a67c52]">Diriyah Brain</p>
-          <h1 className="text-lg font-semibold text-gray-900">Project Control Center</h1>
+    <nav className="bg-white border-b border-gray-200">
+      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <Link to="/" className="text-xl font-semibold text-gray-800">
+          BuiltPro
+        </Link>
+        <div className="flex space-x-4">
+          <Link
+            to="/dashboard"
+            className={`border-b-2 pb-1 ${activeClass('/dashboard')}`}
+          >
+            Dashboard
+          </Link>
+          <Link
+            to="/login"
+            className={`border-b-2 pb-1 ${activeClass('/login')}`}
+          >
+            Login
+          </Link>
+          <Link
+            to="/register"
+            className={`border-b-2 pb-1 ${activeClass('/register')}`}
+          >
+            Register
+          </Link>
         </div>
-        <nav className="hidden items-center gap-4 text-sm font-medium text-gray-600 md:flex" aria-label="Top">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `rounded-full px-4 py-2 transition ${
-                  isActive
-                    ? "bg-[#f5eee6] text-[#8a5b2d]"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                }`
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
       </div>
-    </header>
+    </nav>
   );
 }

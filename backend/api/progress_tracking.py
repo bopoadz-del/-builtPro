@@ -26,7 +26,7 @@ except Exception as exc:  # pragma: no cover - handled at runtime
     _cv2_import_error = exc
 
 try:  # pragma: no cover - optional dependency for lightweight deployments
-    from backend.backend.services.progress_tracking_service import (
+    from backend.services.progress_tracking_service import (
         ProgressSnapshot,
         ProgressTrackingService,
     )

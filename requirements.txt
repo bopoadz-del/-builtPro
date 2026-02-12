@@ -46,6 +46,8 @@ pydantic-settings==2.8.2
 email-validator==2.2.0
 # Phase 1.3: DevOps & Infrastructure
 psutil==6.1.1
+# Phase 1.4: Security Hardening
+slowapi==0.1.9
 # Maintain Python 3.11 wheel support and compatibility with scikit-learn 1.6.x
 mapie==1.1.0
 dowhy==0.12

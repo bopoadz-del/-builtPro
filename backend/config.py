@@ -30,6 +30,10 @@ class Settings(BaseSettings):
 
     # Secrets / keys
     openai_api_key: Optional[str] = Field(default=None)
+    moonshot_api_key: Optional[str] = Field(default=None)
+    kimi_model: str = Field(default="kimi-k2.5")
+    kimi_max_tokens: int = Field(default=4096)
+    kimi_base_url: str = Field(default="https://api.moonshot.ai/v1")
     jwt_secret_key: Optional[str] = Field(default=None)
 
     # CORS (comma-separated string or list)

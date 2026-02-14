@@ -1,0 +1,155 @@
+# Cerebrum RBAC Policies - ITEM 23
+# Format: p, role, resource, action
+
+# ============================================================================
+# VIEWER - Read-only access
+# ============================================================================
+p, viewer, projects, read
+p, viewer, documents, read
+p, viewer, bim_models, read
+p, viewer, dashboard, read
+p, viewer, reports, read
+
+# ============================================================================
+# OPERATOR - Field worker permissions
+# ============================================================================
+p, operator, projects, read
+p, operator, documents, read
+p, operator, documents, create
+p, operator, bim_models, read
+p, operator, field_reports, create
+p, operator, field_reports, read
+p, operator, field_reports, update
+p, operator, safety_observations, create
+p, operator, safety_observations, read
+p, operator, punch_lists, read
+p, operator, punch_lists, update
+p, operator, daily_logs, create
+p, operator, daily_logs, read
+
+# ============================================================================
+# SAFETY_OFFICER - Safety management
+# ============================================================================
+p, safety_officer, projects, read
+p, safety_officer, safety_observations, read
+p, safety_officer, safety_observations, create
+p, safety_officer, safety_observations, update
+p, safety_officer, safety_observations, delete
+p, safety_officer, incidents, read
+p, safety_officer, incidents, create
+p, safety_officer, incidents, update
+p, safety_officer, ncr, read
+p, safety_officer, ncr, create
+p, safety_officer, training_records, read
+p, safety_officer, training_records, create
+p, safety_officer, training_records, update
+
+# ============================================================================
+# ENGINEER - Project engineering
+# ============================================================================
+p, engineer, projects, read
+p, engineer, projects, create
+p, engineer, projects, update
+p, engineer, documents, read
+p, engineer, documents, create
+p, engineer, documents, update
+p, engineer, documents, delete
+p, engineer, bim_models, read
+p, engineer, bim_models, create
+p, engineer, bim_models, update
+p, engineer, drawings, read
+p, engineer, drawings, create
+p, engineer, drawings, update
+p, engineer, rfi, read
+p, engineer, rfi, create
+p, engineer, rfi, update
+p, engineer, submittals, read
+p, engineer, submittals, create
+p, engineer, submittals, update
+p, engineer, change_orders, read
+p, engineer, change_orders, create
+p, engineer, clash_detection, read
+p, engineer, clash_detection, create
+p, engineer, schedule, read
+p, engineer, schedule, update
+
+# ============================================================================
+# COMMERCIAL - Commercial management
+# ============================================================================
+p, commercial, projects, read
+p, commercial, budgets, read
+p, commercial, budgets, create
+p, commercial, budgets, update
+p, commercial, cost_codes, read
+p, commercial, cost_codes, create
+p, commercial, invoices, read
+p, commercial, invoices, create
+p, commercial, invoices, update
+p, commercial, payment_applications, read
+p, commercial, payment_applications, create
+p, commercial, change_orders, read
+p, commercial, change_orders, create
+p, commercial, change_orders, update
+p, commercial, contracts, read
+p, commercial, contracts, create
+p, commercial, purchase_orders, read
+p, commercial, purchase_orders, create
+p, commercial, subcontractor_payments, read
+p, commercial, subcontractor_payments, approve
+
+# ============================================================================
+# DIRECTOR - Project director
+# ============================================================================
+p, director, projects, read
+p, director, projects, create
+p, director, projects, update
+p, director, projects, delete
+p, director, budgets, read
+p, director, budgets, update
+p, director, budgets, approve
+p, director, schedule, read
+p, director, schedule, update
+p, director, change_orders, approve
+p, director, contracts, approve
+p, director, reports, read
+p, director, reports, create
+p, director, analytics, read
+p, director, team_management, read
+p, director, team_management, update
+
+# ============================================================================
+# AUDITOR - Compliance auditing
+# ============================================================================
+p, auditor, audit_logs, read
+p, auditor, projects, read
+p, auditor, documents, read
+p, auditor, compliance_reports, read
+p, auditor, compliance_reports, create
+p, auditor, quality_records, read
+p, auditor, safety_records, read
+p, auditor, financial_records, read
+
+# ============================================================================
+# ADMIN - Full system administration
+# ============================================================================
+p, admin, *, *
+
+# ============================================================================
+# SYSTEM - Automated system operations
+# ============================================================================
+p, system, *, *
+
+# ============================================================================
+# ROLE HIERARCHY
+# Format: g, user_role, parent_role
+# ============================================================================
+g, operator, viewer
+g, safety_officer, operator
+g, engineer, operator
+g, commercial, viewer
+g, director, engineer
+g, director, commercial
+g, auditor, viewer
+g, admin, director
+g, admin, auditor
+g, system, admin

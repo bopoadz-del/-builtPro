@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "kimi": {
+      "command": "python",
+      "args": ["mcp-servers/kimi/server.py"],
+      "env": {
+        "MOONSHOT_API_KEY": "${MOONSHOT_API_KEY}"
+      }
+    }
+  }
+}

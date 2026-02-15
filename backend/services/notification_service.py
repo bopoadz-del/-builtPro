@@ -232,6 +232,7 @@ class NotificationService:
         self.queues: Dict[NotificationPriority, deque] = {
             priority: deque() for priority in NotificationPriority
         }
+        self.scheduled_notifications: Dict[str, Notification] = {}
 
         # Configuration
         self.retry_delays = [60, 300, 900]  # 1 min, 5 min, 15 min
@@ -483,6 +484,7 @@ class NotificationService:
                 self._queue_notification(notification)
             else:
                 notification.status = NotificationStatus.QUEUED
+                self.scheduled_notifications[notification.notification_id] = notification
 
             logger.info(f"Queued notification {notification_id} for user {user_id} via {target_channel}")
 
@@ -543,6 +545,19 @@ class NotificationService:
         self.queues[notification.priority].append(notification)
         notification.status = NotificationStatus.QUEUED
 
+    def _enqueue_ready_scheduled_notifications(self) -> None:
+        """Move scheduled notifications into active queues when they become due."""
+        now = datetime.utcnow()
+        ready_notification_ids = [
+            notification_id
+            for notification_id, notification in self.scheduled_notifications.items()
+            if notification.scheduled_at is None or notification.scheduled_at <= now
+        ]
+
+        for notification_id in ready_notification_ids:
+            notification = self.scheduled_notifications.pop(notification_id)
+            self._queue_notification(notification)
+
     async def process_queue(self) -> int:
         """
         Process queued notifications.
@@ -551,6 +566,7 @@ class NotificationService:
             Number of notifications processed
         """
         processed = 0
+        self._enqueue_ready_scheduled_notifications()
 
         # Process in priority order
         for priority in [
@@ -713,6 +729,7 @@ class NotificationService:
                 priority.value: len(queue)
                 for priority, queue in self.queues.items()
             },
+            "scheduled_notifications": len(self.scheduled_notifications),
             "templates_count": len(self.templates),
             "users_with_preferences": len(self.preferences)
         }

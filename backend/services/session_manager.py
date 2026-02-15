@@ -208,6 +208,16 @@ class SessionManager:
         if not session:
             raise SessionError("Invalid refresh token")
 
+        if datetime.utcnow() > session.expires_at:
+            if session.status != SessionStatus.EXPIRED:
+                session.status = SessionStatus.EXPIRED
+                self.stats["active_sessions"] = max(0, self.stats["active_sessions"] - 1)
+                self.stats["expired_sessions"] += 1
+            raise SessionExpired("Session expired")
+
+        if session.status != SessionStatus.ACTIVE:
+            raise SessionError(f"Session {session.status.value}")
+
         # Generate new tokens
         session.token = self._generate_token()
         session.refresh_token = self._generate_token()
@@ -215,7 +225,6 @@ class SessionManager:
         # Extend expiration
         session.expires_at = datetime.utcnow() + timedelta(hours=self.default_session_ttl_hours)
         session.last_activity = datetime.utcnow()
-        session.status = SessionStatus.ACTIVE
 
         self._log_activity(session.session_id, "session_refreshed", session.ip_address)
 

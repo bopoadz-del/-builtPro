@@ -169,8 +169,10 @@ class TaskQueueManager:
 
         try:
             func = self.registered_functions.get(task.func_name)
-            if func:
-                task.result = func(*task.args, **task.kwargs)
+            if func is None:
+                raise ValueError(f"No task handler registered for '{task.func_name}'")
+
+            task.result = func(*task.args, **task.kwargs)
             task.status = TaskStatus.COMPLETED
             task.completed_at = datetime.utcnow()
             task.progress = 100.0

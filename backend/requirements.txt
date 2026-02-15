@@ -37,6 +37,7 @@ boto3==1.35.28
 PyJWT==2.9.0
 passlib[bcrypt]==1.7.4
 python-jose==3.4.0
+pydantic-settings==2.3.4
 # Maintain Python 3.11 wheel support and compatibility with scikit-learn 1.6.x
 mapie==1.1.0
 dowhy==0.12

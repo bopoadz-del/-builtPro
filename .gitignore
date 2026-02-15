@@ -12,3 +12,10 @@ backend/frontend_dist/
 .DS_Store
 .venv/
 app.db
+
+# Compressed files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+*.tgz

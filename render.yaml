@@ -3,7 +3,7 @@ services:
   # Redis - keyvalue service with IP allow list
   - type: keyvalue
     name: mba-redis
-    plan: starter
+    plan: free
     region: oregon
     ipAllowList: []
 
@@ -11,7 +11,7 @@ services:
   - type: web
     name: mba-backend-main
     runtime: python
-    plan: starter
+    plan: free
     region: oregon
     branch: main
     buildCommand: ./render-build.sh
@@ -66,7 +66,7 @@ services:
   - type: worker
     name: mba-celery-beat
     runtime: python
-    plan: starter
+    plan: free
     region: oregon
     branch: main
     buildCommand: ./render-build.sh
@@ -94,7 +94,7 @@ services:
   - type: worker
     name: mba-celery-fast
     runtime: python
-    plan: starter
+    plan: free
     region: oregon
     branch: main
     buildCommand: ./render-build.sh
@@ -122,7 +122,7 @@ services:
   - type: worker
     name: mba-celery-slow
     runtime: python
-    plan: starter
+    plan: free
     region: oregon
     branch: main
     buildCommand: ./render-build.sh
@@ -150,7 +150,7 @@ services:
   - type: worker
     name: mba-celery-events
     runtime: python
-    plan: starter
+    plan: free
     region: oregon
     branch: main
     buildCommand: ./render-build.sh
@@ -178,7 +178,7 @@ services:
   - type: worker
     name: mba-hydration-worker
     runtime: python
-    plan: starter
+    plan: free
     region: oregon
     branch: main
     buildCommand: ./render-build.sh
@@ -217,7 +217,7 @@ services:
   - type: worker
     name: mba-queue-worker
     runtime: python
-    plan: starter
+    plan: free
     region: oregon
     branch: main
     buildCommand: ./render-build.sh
@@ -243,5 +243,5 @@ databases:
 # Database with updated plan (legacy starter no longer supported)
   - name: mba-postgres-main
     databaseName: diriyah_ai_main
-    plan: standard
+    plan: free
     region: oregon

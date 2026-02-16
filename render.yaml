@@ -6,7 +6,7 @@ services:
     plan: starter
     region: oregon
     branch: main
-    pythonVersion: 3.11
+    pythonVersion: 3.10
     buildCommand: ./render-build.sh
     startCommand: ./render_start.sh
     envVars:
@@ -61,7 +61,7 @@ services:
     plan: starter
     region: oregon
     branch: main
-    pythonVersion: 3.11
+    pythonVersion: 3.10
     buildCommand: ./render-build.sh
     startCommand: >-
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
@@ -89,7 +89,7 @@ services:
     plan: starter
     region: oregon
     branch: main
-    pythonVersion: 3.11
+    pythonVersion: 3.10
     buildCommand: ./render-build.sh
     startCommand: >-
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
@@ -117,7 +117,7 @@ services:
     plan: starter
     region: oregon
     branch: main
-    pythonVersion: 3.11
+    pythonVersion: 3.10
     buildCommand: ./render-build.sh
     startCommand: >-
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
@@ -145,7 +145,7 @@ services:
     plan: starter
     region: oregon
     branch: main
-    pythonVersion: 3.11
+    pythonVersion: 3.10
     buildCommand: ./render-build.sh
     startCommand: >-
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
@@ -173,7 +173,7 @@ services:
     plan: starter
     region: oregon
     branch: main
-    pythonVersion: 3.11
+    pythonVersion: 3.10
     buildCommand: ./render-build.sh
     startCommand: >-
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
@@ -212,7 +212,7 @@ services:
     plan: starter
     region: oregon
     branch: main
-    pythonVersion: 3.11
+    pythonVersion: 3.10
     buildCommand: ./render-build.sh
     startCommand: >-
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then

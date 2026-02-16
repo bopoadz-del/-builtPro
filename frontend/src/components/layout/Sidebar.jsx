@@ -6,7 +6,6 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   FileText,
-  Cube,
   Shield,
   GitBranch,
   MessageSquare,
@@ -45,7 +44,7 @@ const Sidebar = ({ isOpen, onToggle, isMobile }) => {
     {
       section: 'Construction',
       items: [
-        { path: '/bim-viewer', icon: Cube, label: 'BIM Viewer' },
+        { path: '/bim-viewer', icon: Box, label: 'BIM Viewer' },
         { path: '/action-items', icon: CheckSquare, label: 'Action Items' },
         { path: '/economics', icon: DollarSign, label: 'Economics' },
         { path: '/quality', icon: ClipboardCheck, label: 'Quality' },
@@ -106,7 +105,7 @@ const Sidebar = ({ isOpen, onToggle, isMobile }) => {
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-800">
           {!isCollapsed && (
             <div className="flex items-center space-x-2">
-              <Cube className="w-8 h-8 text-blue-500" />
+              <Box className="w-8 h-8 text-blue-500" />
               <span className="text-xl font-bold">Cerebrum</span>
             </div>
           )}

@@ -4,6 +4,7 @@ WORKDIR /frontend
 
 COPY frontend/package*.json ./
 COPY frontend/vite.config.js frontend/tailwind.config.js frontend/postcss.config.js frontend/index.html ./
+COPY frontend/tsconfig.json frontend/tsconfig.node.json ./
 COPY frontend/src ./src
 COPY frontend/public ./public
 
@@ -23,8 +24,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements.txt /app/backend/requirements.txt
-RUN pip install --no-cache-dir -r /app/backend/requirements.txt \
-    gunicorn==21.2.0
+RUN pip install --no-cache-dir -r /app/backend/requirements.txt
 
 COPY backend /app/backend
 COPY main.py conftest.py /app/

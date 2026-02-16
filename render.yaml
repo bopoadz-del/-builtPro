@@ -73,7 +73,6 @@ services:
   - type: worker
     name: mba-celery-beat
     runtime: python
-    pythonVersion: 3.12
     plan: starter
     region: oregon
     branch: main
@@ -103,7 +102,6 @@ services:
   - type: worker
     name: mba-celery-fast
     runtime: python
-    pythonVersion: 3.12
     plan: starter
     region: oregon
     branch: main
@@ -133,7 +131,6 @@ services:
   - type: worker
     name: mba-celery-slow
     runtime: python
-    pythonVersion: 3.12
     plan: starter
     region: oregon
     branch: main
@@ -163,7 +160,6 @@ services:
   - type: worker
     name: mba-celery-events
     runtime: python
-    pythonVersion: 3.12
     plan: starter
     region: oregon
     branch: main
@@ -193,7 +189,6 @@ services:
   - type: worker
     name: mba-hydration-worker
     runtime: python
-    pythonVersion: 3.12
     plan: starter
     region: oregon
     branch: main
@@ -234,7 +229,6 @@ services:
   - type: worker
     name: mba-queue-worker
     runtime: python
-    pythonVersion: 3.12
     plan: starter
     region: oregon
     branch: main

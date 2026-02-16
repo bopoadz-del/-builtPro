@@ -1,12 +1,24 @@
 ---
 services:
+  # Redis first (referenced by others)
+  - type: keyvalue
+    name: mba-redis
+    plan: starter
+    region: oregon
+
+  # Database defined in services for proper ordering
+  - type: pserv
+    name: mba-postgres-main
+    plan: starter
+    region: oregon
+
+  # Main web service
   - type: web
     name: mba-backend-main
     runtime: python
     plan: starter
     region: oregon
     branch: main
-    pythonVersion: 3.10
     buildCommand: ./render-build.sh
     startCommand: ./render_start.sh
     envVars:
@@ -15,10 +27,12 @@ services:
       - key: DATABASE_URL
         fromService:
           name: mba-postgres-main
+          type: pserv
           property: connectionString
       - key: REDIS_URL
         fromService:
           name: mba-redis
+          type: keyvalue
           property: connectionString
       - key: CHROMA_HOST
         sync: false
@@ -61,7 +75,6 @@ services:
     plan: starter
     region: oregon
     branch: main
-    pythonVersion: 3.10
     buildCommand: ./render-build.sh
     startCommand: >-
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
@@ -72,10 +85,12 @@ services:
       - key: DATABASE_URL
         fromService:
           name: mba-postgres-main
+          type: pserv
           property: connectionString
       - key: REDIS_URL
         fromService:
           name: mba-redis
+          type: keyvalue
           property: connectionString
       - key: LOG_LEVEL
         value: "INFO"
@@ -89,7 +104,6 @@ services:
     plan: starter
     region: oregon
     branch: main
-    pythonVersion: 3.10
     buildCommand: ./render-build.sh
     startCommand: >-
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
@@ -100,10 +114,12 @@ services:
       - key: DATABASE_URL
         fromService:
           name: mba-postgres-main
+          type: pserv
           property: connectionString
       - key: REDIS_URL
         fromService:
           name: mba-redis
+          type: keyvalue
           property: connectionString
       - key: LOG_LEVEL
         value: "INFO"
@@ -117,7 +133,6 @@ services:
     plan: starter
     region: oregon
     branch: main
-    pythonVersion: 3.10
     buildCommand: ./render-build.sh
     startCommand: >-
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
@@ -128,10 +143,12 @@ services:
       - key: DATABASE_URL
         fromService:
           name: mba-postgres-main
+          type: pserv
           property: connectionString
       - key: REDIS_URL
         fromService:
           name: mba-redis
+          type: keyvalue
           property: connectionString
       - key: LOG_LEVEL
         value: "INFO"
@@ -145,7 +162,6 @@ services:
     plan: starter
     region: oregon
     branch: main
-    pythonVersion: 3.10
     buildCommand: ./render-build.sh
     startCommand: >-
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
@@ -156,24 +172,25 @@ services:
       - key: DATABASE_URL
         fromService:
           name: mba-postgres-main
+          type: pserv
           property: connectionString
       - key: REDIS_URL
         fromService:
           name: mba-redis
+          type: keyvalue
           property: connectionString
       - key: LOG_LEVEL
         value: "INFO"
       - key: PYTHONUNBUFFERED
         value: "1"
 
-  # Legacy workers (kept for compatibility)
+  # Legacy workers
   - type: worker
     name: mba-hydration-worker
     runtime: python
     plan: starter
     region: oregon
     branch: main
-    pythonVersion: 3.10
     buildCommand: ./render-build.sh
     startCommand: >-
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
@@ -186,10 +203,12 @@ services:
       - key: DATABASE_URL
         fromService:
           name: mba-postgres-main
+          type: pserv
           property: connectionString
       - key: REDIS_URL
         fromService:
           name: mba-redis
+          type: keyvalue
           property: connectionString
       - key: HYDRATION_ENABLED
         value: "true"
@@ -212,7 +231,6 @@ services:
     plan: starter
     region: oregon
     branch: main
-    pythonVersion: 3.10
     buildCommand: ./render-build.sh
     startCommand: >-
       bash -c "if [ -f /opt/render/project/.venv/bin/activate ]; then
@@ -223,21 +241,12 @@ services:
       - key: DATABASE_URL
         fromService:
           name: mba-postgres-main
+          type: pserv
           property: connectionString
       - key: REDIS_URL
         fromService:
           name: mba-redis
+          type: keyvalue
           property: connectionString
       - key: LOG_LEVEL
         value: "DEBUG"
-
-  - type: redis
-    name: mba-redis
-    plan: starter
-    region: oregon
-
-databases:
-  - name: mba-postgres-main
-    databaseName: diriyah_ai_main
-    plan: starter
-    region: oregon

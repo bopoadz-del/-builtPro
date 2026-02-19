@@ -18,8 +18,7 @@ router = APIRouter()
 # be configurable via an environment variable. Here we default to a
 # directory under the project root.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-UPLOAD_DIR = BASE_DIR / "uploads"
-
+UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "/tmp/uploads"))
 # Ensure the upload directory exists at import time
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
